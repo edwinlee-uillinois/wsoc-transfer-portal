@@ -1,0 +1,1143 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style>
+<title>WSOC Portal Board</title>
+<meta name="robots" content="noindex">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a scouting board. Sticky header with three views (Players, Portal list, Position rankings); each view is a control rail over a dense stats table. Light mode only, by request. */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --ink: #13294b;          /* Illinois Blue */
+  --muted: #56627a;
+  --line: #dce1e9;
+  --line-strong: #c1c9d6;
+  --accent: #13294b;       /* Illinois Blue */
+  --accent-hover: #0b1a33;
+  --accent-soft: #e7ebf2;
+  --orange: #ff5f05;       /* Illinois Orange */
+  --orange-text: #c84113;  /* Altgeld, readable orange for text */
+  --portal: #c84113;
+  --portal-soft: #fff0e6;
+  --head-muted: #b9c3d4;
+  --row-hover: #f6f8fb;
+  --na: #a4adbd;
+  --good: #1f7a4d;
+  --warn: #9a6700;
+  --warn-soft: #fbf2d6;
+  --bad: #b42318;
+  --bad-soft: #fde8e6;
+  --heat: 255, 95, 5;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --ctl-h: 34px;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--accent); }
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1480px; margin: 0 auto; }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--accent); border-bottom: 4px solid var(--orange); }
+header.top .wrap { display: flex; align-items: center; gap: 24px; padding-block: 10px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand h1 { font-family: var(--display); font-weight: 700; font-size: 26px; letter-spacing: .01em; margin: 0; text-transform: uppercase; color: var(--surface); }
+.brand .sub { color: var(--head-muted); font-size: 12px; }
+nav.tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+nav.tabs a { font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: .04em; text-transform: uppercase; color: var(--head-muted); text-decoration: none; padding: 6px 12px; border-radius: 6px; }
+nav.tabs a:hover { color: var(--surface); background: rgba(255, 255, 255, .08); }
+nav.tabs a[aria-current="page"] { color: var(--surface); background: rgba(255, 255, 255, .12); }
+nav.tabs .count { font-family: var(--mono); font-size: 12px; background: var(--orange); color: var(--accent); border-radius: 10px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; }
+main { padding-block: 20px 48px; }
+.view { display: grid; gap: 16px; }
+h2 { font-family: var(--display); font-weight: 700; font-size: 22px; text-transform: uppercase; letter-spacing: .02em; margin: 0; text-wrap: balance; }
+h3 { font-family: var(--display); font-weight: 600; font-size: 17px; text-transform: uppercase; letter-spacing: .04em; margin: 0; color: var(--muted); }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: none; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 12px; min-width: 0; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > span, .label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+select, input[type="search"], input[type="number"], textarea { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+input[type="number"] { width: 90px; }
+input[type="search"] { width: 220px; max-width: 100%; }
+textarea { width: 100%; min-height: 90px; font-family: var(--mono); font-size: 12px; }
+/* every dropdown, text box and button shares one height */
+select, input[type="search"], input[type="number"], button:not(.link):not(.x):not(.stat) { height: var(--ctl-h); }
+button:not(.link):not(.x):not(.stat) { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+button { font: inherit; font-weight: 500; cursor: pointer; border-radius: 6px; padding: 6px 12px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); }
+button:hover { border-color: var(--orange-text); color: var(--orange-text); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { background: var(--accent-hover); color: #fff; }
+button.small { padding: 0 10px; font-size: 12.5px; }
+button.link { border: 0; background: none; padding: 0; color: var(--orange-text); text-decoration: underline; }
+label.check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; cursor: pointer; padding-bottom: 6px; }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; }
+.seg button { height: calc(var(--ctl-h) - 2px); border: 0; border-radius: 0; border-right: 1px solid var(--line-strong); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+/* weight builder */
+.weights { display: grid; gap: 10px; }
+.wlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.wchip { display: grid; grid-template-columns: 1fr auto auto; gap: 6px 8px; align-items: center; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; background: var(--bg); }
+.wchip .nm { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wchip .dir { font-size: 11px; color: var(--muted); }
+.wchip input[type="range"] { grid-column: 1 / 3; width: 100%; accent-color: var(--orange); }
+.wchip .wv { font-family: var(--mono); font-size: 12px; width: 2ch; text-align: right; }
+.wchip .x { border: 0; background: none; color: var(--muted); padding: 0 2px; font-size: 16px; line-height: 1; }
+.wchip .x:hover { color: var(--bad); }
+.presets { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.empty-w { color: var(--muted); font-size: 13px; }
+
+/* tables */
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th { position: sticky; top: 0; background: var(--surface); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; border-bottom: 1px solid var(--line-strong); }
+th:hover { color: var(--ink); }
+th.sorted { color: var(--orange-text); }
+th .arr { font-size: 9px; margin-left: 2px; }
+th.l, td.l { text-align: left; }
+tbody tr:hover td { background: var(--row-hover); }
+td.num { font-family: var(--mono); font-size: 12.5px; }
+td.heat { position: relative; }
+td .na { color: var(--na); }
+td.rank { color: var(--muted); font-family: var(--mono); font-size: 12px; width: 1%; }
+td.player { font-weight: 600; }
+td.player small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.pos { font-family: var(--mono); font-size: 11.5px; border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 4px; color: var(--ink); }
+.conf { font-size: 12px; color: var(--muted); }
+.tag-portal { display: inline-block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--portal); background: var(--portal-soft); border-radius: 3px; padding: 1px 5px; margin-left: 6px; vertical-align: 1px; }
+.score { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.score .bar { width: 64px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.score .bar i { display: block; height: 100%; background: var(--orange); }
+.score b { font-family: var(--mono); font-weight: 500; font-size: 12.5px; width: 3.2ch; text-align: right; }
+.more { display: flex; justify-content: center; gap: 12px; align-items: center; color: var(--muted); font-size: 13px; padding: 10px; }
+.note { font-size: 12px; color: var(--muted); }
+.note b { color: var(--ink); font-weight: 600; }
+
+/* portal */
+.drop { border: 2px dashed var(--line-strong); border-radius: 8px; padding: 22px; text-align: center; display: grid; gap: 8px; justify-items: center; background: var(--bg); }
+.drop.over { border-color: var(--orange); background: var(--portal-soft); }
+.drop strong { font-family: var(--display); font-size: 20px; text-transform: uppercase; letter-spacing: .03em; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+.summary { display: flex; gap: 10px; flex-wrap: wrap; }
+.stat { border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; min-width: 110px; background: var(--surface); text-align: left; cursor: pointer; }
+.stat[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.stat .n { font-family: var(--display); font-size: 28px; font-weight: 700; line-height: 1; }
+.stat .t { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.pill { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 10px; padding: 1px 8px; text-transform: uppercase; letter-spacing: .04em; }
+.pill.ok { color: var(--good); background: var(--accent-soft); }
+.pill.rev { color: var(--warn); background: var(--warn-soft); }
+.pill.no { color: var(--bad); background: var(--bad-soft); }
+.pill.man { color: var(--ink); background: var(--line); }
+.stat.ok .n { color: var(--good); } .stat.rev .n { color: var(--warn); } .stat.no .n { color: var(--bad); }
+td select { width: 340px; max-width: none; font-size: 12.5px; padding: 0 6px; text-overflow: ellipsis; }
+td .why { display: block; font-size: 11.5px; color: var(--muted); white-space: normal; min-width: 180px; max-width: 280px; }
+.mapping { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+
+/* rankings */
+.recs { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.rec { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+.rec .hd { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+.rec .nm { font-weight: 600; font-size: 15px; }
+.rec .tm { color: var(--muted); font-size: 12.5px; }
+.rec .big { font-family: var(--display); font-weight: 700; font-size: 32px; line-height: 1; color: var(--orange-text); }
+.rec ul { margin: 0; padding-left: 16px; font-size: 12.5px; }
+.rec li.minus { color: var(--muted); }
+.tier { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
+.tier.t1 { background: var(--accent); color: #fff; }
+.tier.t2 { background: var(--accent-soft); color: var(--accent); }
+.tier.t3 { background: var(--line); color: var(--ink); }
+.tier.t4 { background: transparent; color: var(--muted); border: 1px solid var(--line-strong); }
+.posbar { display: flex; gap: 6px; flex-wrap: wrap; }
+.posbar button { font-family: var(--display); font-size: 17px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 0 14px; }
+.posbar button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.strengths { white-space: normal; text-align: left; font-size: 12px; color: var(--muted); min-width: 200px; max-width: 340px; }
+.strengths b { color: var(--ink); font-weight: 500; }
+.toast { position: fixed; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 8px 14px; border-radius: 6px; font-size: 13px; z-index: 20; }
+/* player names open the staff notes pop-up */
+button.pname { all: unset; cursor: pointer; font-weight: 600; color: var(--ink); border-bottom: 1px dotted var(--line-strong); }
+button.pname:hover { color: var(--orange-text); border-bottom-color: var(--orange-text); }
+button.pname:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; border-radius: 2px; }
+.nflag { display: inline-flex; align-items: center; gap: 2px; margin-left: 5px; color: var(--orange-text); font-size: 11px; font-family: var(--mono); vertical-align: 1px; }
+.nflag svg { width: 13px; height: 13px; }
+button.notebtn { margin-left: 6px; padding: 0 8px; font-size: 12px; gap: 4px; }
+button.notebtn svg { width: 13px; height: 13px; }
+.modal-bg { position: fixed; inset: 0; z-index: 30; background: rgba(19, 41, 75, .45); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.modal { background: var(--surface); border-radius: 10px; width: min(560px, 100%); max-height: min(720px, 100%); display: grid; grid-template-rows: auto auto minmax(0, 1fr); overflow: hidden; box-shadow: 0 20px 50px rgba(19, 41, 75, .3); }
+.modal .mh { background: var(--accent); color: var(--surface); padding: 14px 16px; display: flex; justify-content: space-between; gap: 12px; align-items: start; border-bottom: 4px solid var(--orange); }
+.modal .mh h2 { color: var(--surface); }
+.modal .mh .sub { color: var(--head-muted); font-size: 12.5px; }
+.modal .mh button { background: transparent; color: var(--surface); border-color: rgba(255, 255, 255, .35); width: var(--ctl-h); padding: 0; font-size: 18px; }
+.modal .mh button:hover { border-color: var(--orange); color: var(--surface); }
+.modal .compose { padding: 14px 16px; display: grid; gap: 8px; border-bottom: 1px solid var(--line); }
+.modal .compose textarea { font-family: var(--body); font-size: 14px; min-height: 84px; resize: vertical; }
+.modal .compose .row { justify-content: space-between; align-items: center; }
+.modal .nlist { overflow-y: auto; padding: 12px 16px 16px; display: grid; gap: 10px; align-content: start; }
+.nitem { border: 1px solid var(--line); border-left: 3px solid var(--orange); border-radius: 6px; padding: 8px 10px; display: grid; gap: 4px; }
+.nitem p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.nitem .meta { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); }
+.nitem .meta button { font-size: 12px; }
+.tag-new { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #fff; background: var(--orange-text); border-radius: 3px; padding: 1px 5px; margin-left: 4px; vertical-align: 1px; }
+tr.is-new td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
+.whoami { margin-left: auto; display: flex; gap: 10px; align-items: center; color: var(--head-muted); font-size: 12.5px; }
+.whoami button { background: transparent; color: var(--surface); border-color: rgba(255, 255, 255, .35); }
+.whoami button:hover { color: var(--surface); border-color: var(--orange); }
+.auth { min-height: 70vh; display: grid; place-items: center; padding-block: 32px; }
+.auth form { width: min(380px, 100%); background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--orange); border-radius: 8px; padding: 20px; display: grid; gap: 12px; }
+.auth input { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 6px; padding: 0 10px; height: var(--ctl-h); width: 100%; }
+.auth .err { color: var(--bad); font-size: 13px; min-height: 1em; }
+.uploads { display: grid; gap: 6px; font-size: 13px; align-content: start; }
+#sidePanel { align-content: start; }
+.uploads .u { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.uploads .u b { font-weight: 600; }
+.preview { display: grid; gap: 10px; }
+.preview .big { font-family: var(--display); font-size: 26px; font-weight: 700; color: var(--accent); }
+details summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+.loading { padding: 40px; text-align: center; color: var(--muted); }
+@media (max-width: 560px) { .brand .sub { display: none; } input[type="search"] { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+</head><body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><h1>Portal Board</h1><span class="sub">Power 4 women's soccer &middot; 2026 season</span></div>
+    <nav class="tabs" aria-label="Views">
+      <a href="#players" data-view="players">Players</a>
+      <a href="#portal" data-view="portal">Portal list<span class="count" id="portalCount" hidden>0</span></a>
+      <a href="#rankings" data-view="rankings">Position rankings</a>
+    </nav>
+    <div class="whoami" id="whoami" hidden><span id="whoEmail"></span><button class="small" id="signOut">Sign out</button></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="auth" id="auth" hidden>
+    <form id="authForm" autocomplete="on" onsubmit="return false">
+      <h2>Staff sign in</h2>
+      <p class="note">Use the email and password your program set up for you in Supabase.</p>
+      <label class="field"><span>Email</span><input type="email" id="authEmail" autocomplete="username" required></label>
+      <label class="field"><span>Password</span><input type="password" id="authPass" autocomplete="current-password" required></label>
+      <span class="err" id="authErr"></span>
+      <button class="primary" type="submit" id="authGo">Sign in</button>
+    </form>
+  </div>
+  <div id="loading" class="loading">Loading 2026 Power 4 player stats&hellip;</div>
+
+  <!-- PLAYERS -->
+  <section class="view" id="view-players" hidden>
+    <div style="display:grid;gap:4px"><h2>All players</h2><p class="lede" id="playersLede"></p></div>
+    <div class="panel">
+      <div class="row">
+        <label class="field"><span>Search</span><input type="search" id="pSearch" placeholder="Player or school"></label>
+        <label class="field"><span>Conference</span><select id="pConf"></select></label>
+        <label class="field"><span>Team</span><select id="pTeam"></select></label>
+        <label class="field"><span>Position</span><select id="pPos">
+          <option value="">All</option><option value="F">Forwards (F)</option><option value="M">Midfielders (M)</option><option value="D">Defenders (D)</option><option value="GK">Goalkeepers (GK)</option></select></label>
+        <div class="field"><span>Show</span><div class="seg" id="pShow"><button data-s="all" aria-pressed="true">All</button><button data-s="portal" aria-pressed="false">Portal</button></div></div>
+        <div class="field"><span>Columns</span><div class="seg" id="pCols"><button data-c="field" aria-pressed="true">Field</button><button data-c="gk" aria-pressed="false">Goalkeeping</button><button data-c="all" aria-pressed="false">All</button></div></div>
+      </div>
+    </div>
+    <div class="panel weights" id="pWeights"></div>
+    <div class="row" style="justify-content:flex-end"><button id="pReset">Reset sorting</button></div>
+    <div class="tablewrap"><table id="pTable"></table></div>
+    <div class="more" id="pMore"></div>
+    <p class="note">Players are listed A to Z by last name; click any column heading to sort by it. Per-90 rates use minutes played. <b>Custom score</b> is the weighted average of each player's percentile against Power 4 players at the same position (all positions when Position is All); lower-is-better metrics such as GAA and cards are flipped so a higher percentile is always better.</p>
+  </section>
+
+  <!-- PORTAL -->
+  <section class="view" id="view-portal" hidden>
+    <div style="display:grid;gap:4px"><h2>Transfer portal list</h2><p class="lede">Drop in a CSV or Excel file of names and schools. Every list you add is saved for the whole staff. Players already on the board are kept as they are, and players added by the latest list are marked New. Each row is matched to the 2026 stats by school and a fuzzy name match that handles typos, nicknames, accents and "Last, First" order.</p></div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="drop" id="drop">
+          <strong>Drop a CSV or XLSX here</strong>
+          <span class="note">Needs a name column (or first and last name columns) and a school column. Other columns are kept with the row.</span>
+          <div class="row" style="justify-content:center;align-items:center">
+            <button class="primary" id="pickFile">Choose file</button>
+          </div>
+          <input type="file" id="fileIn" accept=".csv,.xlsx,.xls,.tsv,.txt" hidden>
+        </div>
+        <details><summary>Or paste rows instead</summary>
+          <div style="display:grid;gap:8px;margin-top:8px">
+            <textarea id="pasteIn" placeholder="Name,School&#10;Hope Leyba,Colorado&#10;Powell, Leena	UCLA"></textarea>
+            <div><button id="pasteGo">Check pasted rows</button></div>
+          </div>
+        </details>
+      </div>
+      <div class="panel" id="sidePanel"></div>
+    </div>
+    <div class="summary" id="matchSummary"></div>
+    <div class="tablewrap"><table id="mTable"></table></div>
+    <div class="row" id="portalActions" hidden>
+      <button id="copyPortal">Copy matched players for Excel</button>
+      <button id="toRankings" class="primary">Rank portal players by position</button>
+    </div>
+  </section>
+
+  <!-- RANKINGS -->
+  <section class="view" id="view-rankings" hidden>
+    <div style="display:grid;gap:4px"><h2>Position rankings</h2><p class="lede">Players are scored against everyone at their position across the Power 4, using the weights below. Players listed at two positions (for example F/M) appear in both. Adjust the weights to fit what your roster needs.</p></div>
+    <div class="row" style="align-items:center">
+      <div class="posbar" id="rPos"></div>
+    </div>
+    <div class="panel">
+      <div class="row">
+        <div class="field"><span>Show</span><div class="seg" id="rScope"><button data-s="portal" aria-pressed="false">Portal list</button><button data-s="all" aria-pressed="true">All Power 4</button></div></div>
+        <label class="field"><span>Conference</span><select id="rConf"></select></label>
+        <label class="field"><span>Show top</span><select id="rTop"><option>10</option><option selected>25</option><option>50</option><option>100</option></select></label>
+      </div>
+      <p class="note" id="rNote"></p>
+    </div>
+    <div class="panel weights" id="rWeights"></div>
+    <div><h3 style="margin-bottom:8px" id="recHead">Top recommendations</h3><div class="recs" id="recs"></div></div>
+    <div class="row" style="justify-content:flex-end"><button id="rReset">Reset sorting</button></div>
+    <div class="tablewrap"><table id="rTable"></table></div>
+    <p class="note">Tiers: <span class="tier t1">Priority target</span> score 85+, <span class="tier t2">Strong fit</span> 70&ndash;84, <span class="tier t3">Rotation</span> 55&ndash;69, <span class="tier t4">Depth</span> below 55. Scores are percentiles (0&ndash;100) blended by your weights. Box-score stats say little about defending, so defender rankings lean on availability, starts, discipline and attacking output. SEC schools on WMT Stats have no PK or shots-faced data; those metrics are skipped for them and the remaining weights are rebalanced.</p>
+  </section>
+</main>
+<div class="modal-bg" id="noteModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="noteTitle">
+    <div class="mh"><div style="display:grid;gap:2px;min-width:0"><h2 id="noteTitle">Player</h2><span class="sub" id="noteSub"></span></div><button id="noteClose" aria-label="Close notes">&times;</button></div>
+    <div class="compose">
+      <label class="field"><span>Add a staff note</span><textarea id="noteText" placeholder="Film notes, contact log, fit, character&hellip;"></textarea></label>
+      <div class="row"><span class="note" id="noteStatus"></span><button class="primary" id="noteAdd" disabled>Add note</button></div>
+    </div>
+    <div class="nlist" id="noteList" aria-live="polite"></div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>window.supabase || document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"><\/script>');</script>
+<script>
+"use strict";
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("pb:" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("pb:" + k, JSON.stringify(v)); } catch (e) {} },
+  del(k) { try { localStorage.removeItem("pb:" + k); } catch (e) {} }
+};
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2200); }
+
+function parseCSV(text) {
+  const rows = []; let row = [], cur = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(cur); cur = ""; }
+    else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cur); rows.push(row); row = []; cur = ""; }
+    else cur += c;
+  }
+  if (cur !== "" || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(x => x !== ""));
+}
+const num = v => (v === "" || v == null || isNaN(+v)) ? null : +v;
+
+/* ---------- metrics ---------- */
+// dir: 1 = higher is better, -1 = lower is better. kind: field | gk
+const F1 = v => v.toFixed(1), F2 = v => v.toFixed(2), PCT = v => (v * 100).toFixed(0) + "%", INT = v => Math.round(v).toLocaleString("en-US"), SVP = v => v.toFixed(3).replace(/^0/, "");
+const METRICS = [
+  { k: "MIN", l: "MIN", n: "Minutes", dir: 1, f: INT, kind: "field" },
+  { k: "GP", l: "GP", n: "Games played", dir: 1, f: INT, kind: "field" },
+  { k: "GS", l: "GS", n: "Games started", dir: 1, f: INT, kind: "field" },
+  { k: "GSpct", l: "GS%", n: "Start rate", dir: 1, f: PCT, kind: "field" },
+  { k: "MINpg", l: "MIN/G", n: "Minutes per game", dir: 1, f: F1, kind: "field" },
+  { k: "G", l: "G", n: "Goals", dir: 1, f: INT, kind: "field" },
+  { k: "A", l: "A", n: "Assists", dir: 1, f: INT, kind: "field" },
+  { k: "PTS", l: "PTS", n: "Points", dir: 1, f: INT, kind: "field" },
+  { k: "G90", l: "G/90", n: "Goals per 90", dir: 1, f: F2, kind: "field" },
+  { k: "A90", l: "A/90", n: "Assists per 90", dir: 1, f: F2, kind: "field" },
+  { k: "PTS90", l: "PTS/90", n: "Points per 90", dir: 1, f: F2, kind: "field" },
+  { k: "SH", l: "SH", n: "Shots", dir: 1, f: INT, kind: "field" },
+  { k: "SH90", l: "SH/90", n: "Shots per 90", dir: 1, f: F2, kind: "field" },
+  { k: "SOG", l: "SOG", n: "Shots on goal", dir: 1, f: INT, kind: "field" },
+  { k: "SOG90", l: "SOG/90", n: "Shots on goal per 90", dir: 1, f: F2, kind: "field" },
+  { k: "SOGpct", l: "SOG%", n: "Shot accuracy (SOG / SH)", dir: 1, f: PCT, kind: "field", minSH: 5 },
+  { k: "Conv", l: "G/SH", n: "Finishing (goals per shot)", dir: 1, f: PCT, kind: "field", minSH: 5 },
+  { k: "GW", l: "GW", n: "Game-winning goals", dir: 1, f: INT, kind: "field" },
+  { k: "PKpct", l: "PK%", n: "Penalty conversion", dir: 1, f: PCT, kind: "field" },
+  { k: "YC", l: "YC", n: "Yellow cards", dir: -1, f: INT, kind: "field" },
+  { k: "RC", l: "RC", n: "Red cards", dir: -1, f: INT, kind: "field" },
+  { k: "Cards90", l: "Cards/90", n: "Cards per 90 (red = 2)", dir: -1, f: F2, kind: "field" },
+  { k: "GKMIN", l: "GK MIN", n: "Goalkeeper minutes", dir: 1, f: INT, kind: "gk" },
+  { k: "GKGS", l: "GK GS", n: "Goalkeeper starts", dir: 1, f: INT, kind: "gk" },
+  { k: "GA", l: "GA", n: "Goals allowed", dir: -1, f: INT, kind: "gk" },
+  { k: "GAA", l: "GAA", n: "Goals-against average", dir: -1, f: F2, kind: "gk" },
+  { k: "SV", l: "SV", n: "Saves", dir: 1, f: INT, kind: "gk" },
+  { k: "SVpct", l: "SV%", n: "Save percentage", dir: 1, f: SVP, kind: "gk" },
+  { k: "SV90", l: "SV/90", n: "Saves per 90", dir: 1, f: F2, kind: "gk" },
+  { k: "SHO", l: "SHO", n: "Shutouts", dir: 1, f: INT, kind: "gk" },
+  { k: "SHOrate", l: "SHO%", n: "Shutouts per start", dir: 1, f: PCT, kind: "gk" },
+  { k: "Wpct", l: "W%", n: "Win rate (ties = half)", dir: 1, f: PCT, kind: "gk" },
+  { k: "SF90", l: "SF/90", n: "Shots faced per 90", dir: 1, f: F2, kind: "gk" }
+];
+const M = Object.fromEntries(METRICS.map(m => [m.k, m]));
+const FIELD_COLS = ["MIN", "GS", "G", "A", "PTS", "G90", "A90", "PTS90", "SH90", "SOGpct", "Conv", "GW", "Cards90"];
+const GK_COLS = ["GKMIN", "GKGS", "GAA", "SVpct", "SV90", "SHO", "SHOrate", "Wpct", "SF90"];
+const ALL_COLS = METRICS.map(m => m.k);
+
+const PRESETS = {
+  F: { label: "Goal scorer", w: { G90: 5, PTS90: 3, SOG90: 2, Conv: 2, SOGpct: 1, GW: 1, MIN: 1 } },
+  M: { label: "Creative midfielder", w: { A90: 4, PTS90: 3, G90: 1, SH90: 1, GSpct: 2, MINpg: 2, SOGpct: 1 } },
+  D: { label: "Reliable defender", w: { MINpg: 4, GSpct: 3, MIN: 2, Cards90: 2, PTS90: 1, A90: 1 } },
+  GK: { label: "Shot stopper", w: { SVpct: 5, GAA: 3, SHOrate: 2, GKMIN: 2, Wpct: 1, SV90: 1 } }
+};
+const EXTRA_PRESETS = { "Two-way midfielder": { G90: 2, A90: 2, MINpg: 3, GSpct: 3, Cards90: 1 }, "Creator": { A90: 5, PTS90: 2, MINpg: 1 }, "Proven starter": { GSpct: 4, MINpg: 4, MIN: 2 } };
+const POSNAMES = { F: "Forwards", M: "Midfielders", D: "Defenders", GK: "Goalkeepers" };
+
+/* ---------- state ---------- */
+let P = [];               // players
+let TEAMS = [];
+const S = {
+  view: "players",
+  p: { q: "", conf: "", team: "", pos: "", min: 0, portal: false, cols: "field", sort: null, dir: -1, limit: 100, weights: store.get("pWeights", {}) },
+  r: { pos: "F", scope: "all", conf: "", min: { F: 0, M: 0, D: 0, GK: 0 }, top: 25, sort: "score", dir: -1, weights: store.get("rWeights", JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(PRESETS).map(([k, v]) => [k, v.w]))))) },
+  portal: { filter: "" }
+};
+let portalIds = new Set();
+let newIds = new Set();
+
+/* ---------- load ---------- */
+const COLMAP = { "Conference": "conference", "Team": "team", "Last Name": "last_name", "First Name": "first_name", "Position": "position", "GP": "gp", "GS": "gs", "MIN": "min", "G": "g", "A": "a", "PTS": "pts", "SH": "sh", "SOG": "sog", "YC": "yc", "RC": "rc", "GW": "gw", "PK": "pk", "PK ATT": "pk_att", "GK GP": "gk_gp", "GK GS": "gk_gs", "GK MIN": "gk_min", "GA": "ga", "GAA": "gaa", "SV": "sv", "SV%": "sv_pct", "W": "w", "L": "l", "T": "t", "SHO": "sho", "SF": "sf", "Source": "source" };
+async function fetchAll(table, cols, order) {
+  const out = []; const size = 1000;
+  for (let from = 0; ; from += size) {
+    let q = sb.from(table).select(cols).range(from, from + size - 1);
+    if (order) q = q.order(order, { ascending: true });
+    const { data, error } = await q;
+    if (error) throw new Error(error.message);
+    out.push(...data);
+    if (data.length < size) return out;
+  }
+}
+const byDbId = new Map();
+async function loadData() {
+  const dbRows = await fetchAll("players", "*", "id");
+  if (!dbRows.length) throw new Error("No players found. Ask the person who set up Supabase to load the stats.");
+  const h = Object.keys(COLMAP);
+  const rows = dbRows.map(r => h.map(k => r[COLMAP[k]] == null ? "" : String(r[COLMAP[k]])));
+  const ix = Object.fromEntries(h.map((c, i) => [c.trim(), i]));
+  P = rows.map((r, i) => {
+    const g = c => num(r[ix[c]]);
+    const s = c => (r[ix[c]] ?? "").trim();
+    const p = { id: i, conf: s("Conference"), team: s("Team"), last: s("Last Name"), first: s("First Name"), pos: s("Position") || "?", source: s("Source") };
+    p.name = (p.first + " " + p.last).trim();
+    p.groups = p.pos === "?" ? [] : [...new Set(p.pos.split("/").map(x => x.trim()))];
+    ["GP", "GS", "MIN", "G", "A", "PTS", "SH", "SOG", "YC", "RC", "GW", "PK"].forEach(k => p[k] = g(k));
+    p.PKATT = g("PK ATT"); p.GKGP = g("GK GP"); p.GKGS = g("GK GS"); p.GKMIN = g("GK MIN"); p.GA = g("GA"); p.GAA = g("GAA"); p.SV = g("SV"); p.SVpct = g("SV%"); p.W = g("W"); p.L = g("L"); p.T = g("T"); p.SHO = g("SHO"); p.SF = g("SF");
+    const per90 = v => (v != null && p.MIN > 0) ? v / p.MIN * 90 : null;
+    p.G90 = per90(p.G); p.A90 = per90(p.A); p.PTS90 = per90(p.PTS); p.SH90 = per90(p.SH); p.SOG90 = per90(p.SOG);
+    p.SOGpct = p.SH >= 5 ? p.SOG / p.SH : null;
+    p.Conv = p.SH >= 5 ? p.G / p.SH : null;
+    p.GSpct = p.GP > 0 ? p.GS / p.GP : null;
+    p.MINpg = p.GP > 0 ? p.MIN / p.GP : null;
+    p.PKpct = p.PKATT > 0 ? p.PK / p.PKATT : null;
+    p.Cards90 = (p.YC != null && p.MIN > 0) ? (p.YC + 2 * (p.RC || 0)) / p.MIN * 90 : null;
+    if (p.GKMIN != null) {
+      p.SV90 = p.GKMIN > 0 ? p.SV / p.GKMIN * 90 : null;
+      p.SHOrate = p.GKGS > 0 ? p.SHO / p.GKGS : null;
+      const dec = (p.W || 0) + (p.L || 0) + (p.T || 0);
+      p.Wpct = dec > 0 ? (p.W + 0.5 * (p.T || 0)) / dec : null;
+      p.SF90 = (p.SF != null && p.GKMIN > 0) ? p.SF / p.GKMIN * 90 : null;
+      if (!p.groups.includes("GK") && p.GKMIN > 0) p.gkAlso = true;
+    }
+    return p;
+  });
+  P.forEach((p, i) => { p.dbId = dbRows[i].id; byDbId.set(p.dbId, p); });
+  TEAMS = [...new Set(P.map(p => p.team))].sort();
+}
+
+/* ---------- percentiles ---------- */
+const pctCache = new Map();
+function poolFor(group, minMin) {
+  const isGK = group === "GK";
+  return P.filter(p => {
+    if (group && !p.groups.includes(group)) return false;
+    const m = isGK ? p.GKMIN : p.MIN;
+    return m != null && m >= minMin;
+  });
+}
+function percentiles(group, minMin) {
+  const key = (group || "ALL") + "|" + minMin;
+  if (pctCache.has(key)) return pctCache.get(key);
+  const pool = poolFor(group, minMin);
+  const out = {};
+  for (const m of METRICS) {
+    const vals = pool.map(p => p[m.k]).filter(v => v != null).sort((a, b) => a - b);
+    out[m.k] = { vals, n: vals.length };
+  }
+  pctCache.set(key, out); return out;
+}
+function pctOf(table, k, v) {
+  if (v == null) return null;
+  const t = table[k]; if (!t || t.n < 5) return null;
+  const a = t.vals; let lo = 0, hi = a.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (a[mid] < v) lo = mid + 1; else hi = mid; }
+  let below = lo, eq = 0; while (lo + eq < a.length && a[lo + eq] === v) eq++;
+  let pc = (below + 0.5 * eq) / a.length * 100;
+  if (M[k].dir < 0) pc = 100 - pc;
+  return Math.max(0, Math.min(100, pc));
+}
+function scoreOf(p, table, weights) {
+  let s = 0, w = 0, tw = 0;
+  const parts = [];
+  for (const [k, wt] of Object.entries(weights)) {
+    if (!wt) continue; tw += wt;
+    const pc = pctOf(table, k, p[k]);
+    if (pc == null) continue;
+    s += pc * wt; w += wt; parts.push({ k, pc, wt });
+  }
+  if (!w) return { score: null, parts, coverage: 0 };
+  return { score: s / w, parts, coverage: w / tw };
+}
+
+/* ---------- weight builder ---------- */
+function renderWeights(el, weights, opts) {
+  const keys = Object.keys(weights).filter(k => weights[k] > 0);
+  const avail = METRICS.filter(m => !keys.includes(m.k) && (!opts.kind || m.kind === opts.kind));
+  el.innerHTML = `
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h3>${esc(opts.title)}</h3>
+      <div class="presets">
+        <select id="${opts.id}-add" aria-label="Add a metric"><option value="">+ Add metric&hellip;</option>${avail.map(m => `<option value="${m.k}">${esc(m.l)} &middot; ${esc(m.n)}</option>`).join("")}</select>
+        ${opts.presets.map((p, i) => `<button class="small" data-preset="${i}">${esc(p.label)}</button>`).join("")}
+        ${keys.length ? `<button class="small" data-clear>Clear</button>` : ""}
+      </div>
+    </div>
+    ${keys.length ? `<div class="wlist">${keys.map(k => `
+      <div class="wchip"><span class="nm" title="${esc(M[k].n)}">${esc(M[k].l)} <span class="dir">${M[k].dir < 0 ? "lower is better" : ""}</span></span>
+        <span class="wv">${weights[k]}</span><button class="x" data-rm="${k}" aria-label="Remove ${esc(M[k].l)}">&times;</button>
+        <input type="range" min="1" max="10" step="1" value="${weights[k]}" data-w="${k}" aria-label="Weight for ${esc(M[k].n)}">
+      </div>`).join("")}</div>` : `<p class="empty-w">${esc(opts.empty)}</p>`}`;
+  el.querySelector(`#${opts.id}-add`).onchange = e => { if (e.target.value) { weights[e.target.value] = 3; opts.change(); } };
+  $$("[data-preset]", el).forEach(b => b.onclick = () => { const pr = opts.presets[+b.dataset.preset]; for (const k in weights) delete weights[k]; Object.assign(weights, pr.w); opts.change(); });
+  const c = el.querySelector("[data-clear]"); if (c) c.onclick = () => { for (const k in weights) delete weights[k]; opts.change(); };
+  $$("[data-rm]", el).forEach(b => b.onclick = () => { delete weights[b.dataset.rm]; opts.change(); });
+  $$("[data-w]", el).forEach(r => {
+    r.oninput = () => { weights[r.dataset.w] = +r.value; r.parentElement.querySelector(".wv").textContent = r.value; opts.change(true); };
+  });
+}
+
+/* ---------- cell rendering ---------- */
+function fmt(k, v) { return v == null ? `<span class="na">&ndash;</span>` : M[k].f(v); }
+function heatCell(k, v, table) {
+  const pc = table ? pctOf(table, k, v) : null;
+  const bg = pc == null ? "" : `background:rgba(var(--heat),${(Math.max(0, pc - 50) / 50 * 0.26).toFixed(3)})`;
+  return `<td class="num" style="${bg}" title="${pc == null ? "" : Math.round(pc) + "th percentile"}">${fmt(k, v)}</td>`;
+}
+function scoreCell(s) {
+  if (s == null) return `<td class="num"><span class="na">&ndash;</span></td>`;
+  return `<td><div class="score"><span class="bar"><i style="width:${s.toFixed(0)}%"></i></span><b>${s.toFixed(0)}</b></div></td>`;
+}
+const NOTE_SVG = `<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 1.75h7l3 3v9.5H3z"/><path d="M5.5 7h5M5.5 9.5h5M5.5 12h3"/></svg>`;
+function noteFlag(p) { const n = notesFor(p).length; return n ? `<span class="nflag" title="${n} staff note${n > 1 ? "s" : ""}">${NOTE_SVG}${n > 1 ? n : ""}</span>` : ""; }
+function nameBtn(p) { return `<button class="pname" data-note="${p.id}" title="Open staff notes">${esc(p.name)}</button>${noteFlag(p)}`; }
+function portalTag(p) { return portalIds.has(p.id) ? `<span class="tag-portal">Portal</span>${newIds.has(p.id) ? `<span class="tag-new">New</span>` : ""}` : ""; }
+function playerCell(p, sub) {
+  return `<td class="l player">${nameBtn(p)}${portalTag(p)}<small>${esc(sub ?? p.team)}</small></td>`;
+}
+function sortRows(rows, key, dir, getter) {
+  return rows.sort((a, b) => {
+    const va = getter(a, key), vb = getter(b, key);
+    if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1;
+    if (typeof va === "string") return dir * va.localeCompare(vb);
+    return dir * (va - vb);
+  });
+}
+function thead(cols, sort, dir) {
+  return `<thead><tr>${cols.map(c => `<th class="${c.l ? "l " : ""}${sort === c.k ? "sorted" : ""}" data-sort="${c.k}" title="${esc(c.t || "")}" ${c.nosort ? 'data-nosort="1"' : ""}>${esc(c.h)}${sort === c.k ? `<span class="arr">${dir < 0 ? "&#9660;" : "&#9650;"}</span>` : ""}</th>`).join("")}</tr></thead>`;
+}
+
+/* ---------- PLAYERS view ---------- */
+function renderPlayers(onlyTable) {
+  const st = S.p;
+  if (!onlyTable) renderWeights($("#pWeights"), st.weights, {
+    id: "pw", title: "Sort by a combination of metrics", kind: st.pos === "GK" ? "" : "",
+    empty: "Add metrics and weights to build a custom score, or click any column header to sort by one metric.",
+    presets: [{ label: "Goal scorer", w: PRESETS.F.w }, { label: "Creative mid", w: PRESETS.M.w }, { label: "Defender", w: PRESETS.D.w }, { label: "Keeper", w: PRESETS.GK.w }, ...Object.entries(EXTRA_PRESETS).map(([l, w]) => ({ label: l, w }))],
+    change: (live) => { store.set("pWeights", st.weights); if (Object.keys(st.weights).length && !live) { st.sort = "score"; st.dir = -1; } live ? renderPlayers(true) : renderPlayers(); }
+  });
+  const isGKpool = st.pos === "GK";
+  const table = percentiles(st.pos, st.min);
+  const q = st.q.trim().toLowerCase();
+  let rows = P.filter(p => {
+    if (st.conf && p.conf !== st.conf) return false;
+    if (st.team && p.team !== st.team) return false;
+    if (st.pos && !p.groups.includes(st.pos)) return false;
+    const mins = isGKpool ? p.GKMIN : (st.cols === "gk" ? (p.GKMIN ?? -1) : p.MIN);
+    if (st.min > 0 && !(mins >= st.min)) return false;
+    if (st.cols === "gk" && p.GKMIN == null) return false;
+    if (st.portal && !portalIds.has(p.id)) return false;
+    if (q && !(p.name.toLowerCase().includes(q) || p.team.toLowerCase().includes(q) || (p.last + ", " + p.first).toLowerCase().includes(q))) return false;
+    return true;
+  });
+  const gkTable = st.cols !== "field" ? percentiles("GK", st.pos === "GK" ? st.min : st.min) : null;
+  const hasW = Object.values(st.weights).some(v => v > 0);
+  const anyGKw = Object.keys(st.weights).some(k => M[k].kind === "gk");
+  const scoreTable = anyGKw && !st.pos ? percentiles("GK", st.min) : table;
+  rows.forEach(p => { p._s = hasW ? scoreOf(p, (anyGKw && p.groups.includes("GK")) ? percentiles("GK", st.min) : table, st.weights) : null; });
+  let colKeys = st.cols === "field" ? FIELD_COLS : st.cols === "gk" ? GK_COLS : ALL_COLS;
+  const wk = Object.keys(st.weights).filter(k => st.weights[k] > 0 && !colKeys.includes(k));
+  colKeys = [...colKeys, ...wk];
+  if (!st.sort) { st.sort = "name"; st.dir = 1; }
+  if (st.sort === "score" && !hasW) { st.sort = "name"; st.dir = 1; }
+  const getter = (p, k) => k === "score" ? p._s?.score : k === "name" ? p.last + " " + p.first : k === "team" ? p.team : k === "conf" ? p.conf : k === "pos" ? p.pos : p[k];
+  sortRows(rows, st.sort, st.dir, getter);
+  const cols = [{ k: "#", h: "#", nosort: true }, { k: "name", h: "Player", l: 1 }, { k: "conf", h: "Conf", l: 1 }, { k: "pos", h: "Pos", l: 1 }];
+  if (hasW) cols.push({ k: "score", h: "Custom score", t: "Weighted percentile score" });
+  colKeys.forEach(k => cols.push({ k, h: M[k].l, t: M[k].n + (M[k].dir < 0 ? " (lower is better)" : "") }));
+  const shown = rows.slice(0, st.limit);
+  $("#pTable").innerHTML = thead(cols, st.sort, st.dir) + `<tbody>${shown.map((p, i) => `<tr>
+    <td class="rank">${i + 1}</td>${playerCell(p)}<td class="l conf">${esc(p.conf)}</td><td class="l"><span class="pos">${esc(p.pos)}</span></td>
+    ${hasW ? scoreCell(p._s?.score) : ""}
+    ${colKeys.map(k => `<td class="num">${fmt(k, p[k])}</td>`).join("")}
+  </tr>`).join("") || `<tr><td class="l" colspan="${cols.length}" style="padding:24px;color:var(--muted)">No players match these filters.${st.portal && !portalIds.size ? " Load a portal list first." : ""}</td></tr>`}</tbody>`;
+  $$("#pTable th").forEach(th => { if (th.dataset.nosort) return; th.onclick = () => { const k = th.dataset.sort; if (st.sort === k) st.dir *= -1; else { st.sort = k; st.dir = (k === "name" || k === "team" || k === "conf" || k === "pos" || (M[k] && M[k].dir < 0)) ? 1 : -1; } renderPlayers(true); }; });
+  $("#pMore").innerHTML = rows.length > st.limit ? `Showing ${st.limit} of ${rows.length.toLocaleString("en-US")} players <button class="small" id="pMoreBtn">Show 100 more</button> <button class="small" id="pAllBtn">Show all</button>` : `${rows.length.toLocaleString("en-US")} players`;
+  const mb = $("#pMoreBtn"); if (mb) mb.onclick = () => { st.limit += 100; renderPlayers(true); };
+  const ab = $("#pAllBtn"); if (ab) ab.onclick = () => { st.limit = 5000; renderPlayers(true); };
+  const n = poolFor(st.pos, st.min).length;
+  $("#playersLede").textContent = `${P.length.toLocaleString("en-US")} players on ${TEAMS.length} Big Ten, ACC, Big 12 and SEC teams. Percentiles compare against all ${n.toLocaleString("en-US")} ${st.pos ? POSNAMES[st.pos].toLowerCase() : "players"} with minutes played.`;
+}
+function initPlayers() {
+  const confs = [...new Set(P.map(p => p.conf))];
+  $("#pConf").innerHTML = `<option value="">All</option>` + confs.map(c => `<option>${esc(c)}</option>`).join("");
+  $("#rConf").innerHTML = $("#pConf").innerHTML;
+  const fillTeams = () => { const ts = TEAMS.filter(t => !S.p.conf || P.find(p => p.team === t).conf === S.p.conf); $("#pTeam").innerHTML = `<option value="">All</option>` + ts.map(t => `<option ${t === S.p.team ? "selected" : ""}>${esc(t)}</option>`).join(""); };
+  fillTeams();
+  let tmr;
+  $("#pSearch").oninput = e => { clearTimeout(tmr); tmr = setTimeout(() => { S.p.q = e.target.value; S.p.limit = 100; renderPlayers(true); }, 150); };
+  $("#pConf").onchange = e => { S.p.conf = e.target.value; S.p.team = ""; fillTeams(); renderPlayers(true); };
+  $("#pTeam").onchange = e => { S.p.team = e.target.value; renderPlayers(true); };
+  $("#pPos").onchange = e => { S.p.pos = e.target.value; if (S.p.pos === "GK" && S.p.cols === "field") setCols("gk"); else if (S.p.pos && S.p.pos !== "GK" && S.p.cols === "gk") setCols("field"); renderPlayers(); };
+  $$("#pShow button").forEach(b => b.onclick = () => { S.p.portal = b.dataset.s === "portal"; $$("#pShow button").forEach(x => x.setAttribute("aria-pressed", x === b)); S.p.limit = 100; renderPlayers(true); });
+  $("#pReset").onclick = () => { S.p.sort = null; S.p.dir = 1; S.p.limit = 100; renderPlayers(true); toast("Sorted A to Z by last name"); };
+  const setCols = c => { S.p.cols = c; $$("#pCols button").forEach(b => b.setAttribute("aria-pressed", b.dataset.c === c)); if (!Object.keys(S.p.weights).length) S.p.sort = null; };
+  $$("#pCols button").forEach(b => b.onclick = () => { setCols(b.dataset.c); renderPlayers(true); });
+}
+
+/* ---------- fuzzy matching ---------- */
+const norm = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+const normName = s => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/['’`.]/g, "").replace(/[^a-z ,]+/g, " ").replace(/\s+/g, " ").trim();
+function jw(a, b) {
+  if (a === b) return 1; if (!a || !b) return 0;
+  const md = Math.max(0, Math.floor(Math.max(a.length, b.length) / 2) - 1);
+  const am = new Array(a.length).fill(false), bm = new Array(b.length).fill(false);
+  let m = 0;
+  for (let i = 0; i < a.length; i++) { const lo = Math.max(0, i - md), hi = Math.min(i + md + 1, b.length); for (let j = lo; j < hi; j++) { if (!bm[j] && a[i] === b[j]) { am[i] = bm[j] = true; m++; break; } } }
+  if (!m) return 0;
+  let t = 0, k = 0; for (let i = 0; i < a.length; i++) if (am[i]) { while (!bm[k]) k++; if (a[i] !== b[k]) t++; k++; }
+  const j = (m / a.length + m / b.length + (m - t / 2) / m) / 3;
+  let l = 0; while (l < 4 && a[l] === b[l]) l++;
+  return j + l * 0.1 * (1 - j);
+}
+const NICK = [["abby", "abigail", "abbie", "abi"], ["alex", "alexandra", "alexa", "alexis", "lexi", "ali", "ally", "allie"], ["allison", "ally", "allie", "ali"], ["kate", "katherine", "katie", "kathryn", "kat", "catherine", "cate", "katelyn", "kaitlyn", "caitlin"], ["maddie", "madison", "madeline", "madelyn", "maddy", "madi"], ["liz", "elizabeth", "lizzie", "lizzy", "eliza", "beth", "libby", "ellie"], ["sam", "samantha", "sammy"], ["jess", "jessica", "jessie"], ["becca", "rebecca", "becky"], ["ellie", "eleanor", "elle", "ella", "elena"], ["nikki", "nicole", "nicky"], ["gabby", "gabrielle", "gabriella", "gabi", "gaby"], ["izzy", "isabella", "isabel", "isabelle", "bella", "issy"], ["kenzie", "mackenzie", "mckenzie", "makenzie"], ["tori", "victoria", "vicky"], ["chrissy", "christina", "christine", "tina"], ["emmy", "emily", "em", "emma"], ["maggie", "margaret", "meg", "megan", "meghan"], ["jen", "jennifer", "jenny"], ["mandy", "amanda"], ["mia", "amelia"], ["josie", "josephine", "jo"], ["charlie", "charlotte", "char"], ["livvy", "olivia", "liv"], ["sophie", "sophia"], ["kim", "kimberly"], ["steph", "stephanie"], ["andi", "andrea"], ["dani", "danielle"], ["frankie", "francesca"], ["cami", "camila", "camille"], ["addie", "addison"], ["mady", "madeleine"], ["zoe", "zoey"], ["ari", "ariana", "arianna"], ["syd", "sydney", "sydnee"], ["kk", "kayla", "kaitlyn", "katherine"], ["ty", "tyler"], ["lou", "louisa", "louise"], ["nat", "natalie", "natalia"]];
+const NICKMAP = new Map(); NICK.forEach((g, i) => g.forEach(n => { if (!NICKMAP.has(n)) NICKMAP.set(n, new Set()); NICKMAP.get(n).add(i); }));
+function firstSim(a, b) {
+  if (!a || !b) return 0.5;
+  if (a === b) return 1;
+  const ga = NICKMAP.get(a), gb = NICKMAP.get(b);
+  if (ga && gb && [...ga].some(x => gb.has(x))) return 0.95;
+  if (a.length === 1 || b.length === 1) return a[0] === b[0] ? 0.88 : 0.2;
+  const a0 = a.replace(/ /g, ""), b0 = b.replace(/ /g, "");
+  if (a0 === b0) return 0.99;
+  return jw(a0, b0);
+}
+function nameScore(inp, p) {
+  // inp: {first, last, full}
+  const cf = normName(p.first).replace(/,/g, ""), cl = normName(p.last).replace(/,/g, "");
+  const cfull = (cf + " " + cl).trim();
+  let best = 0;
+  if (inp.last) {
+    const ls = jw(inp.last.replace(/ /g, ""), cl.replace(/ /g, ""));
+    best = Math.max(best, 0.62 * ls + 0.38 * firstSim(inp.first, cf));
+  }
+  if (inp.full) {
+    best = Math.max(best, jw(inp.full.replace(/ /g, ""), cfull.replace(/ /g, "")) * 0.97);
+    const toks = inp.full.split(" ");
+    // try every split of the full name into first + last
+    for (let i = 1; i < toks.length; i++) {
+      const f = toks.slice(0, i).join(" "), l = toks.slice(i).join(" ");
+      best = Math.max(best, 0.62 * jw(l.replace(/ /g, ""), cl.replace(/ /g, "")) + 0.38 * firstSim(f, cf));
+      best = Math.max(best, 0.62 * jw(f.replace(/ /g, ""), cl.replace(/ /g, "")) + 0.38 * firstSim(l, cf) - 0.02); // reversed order
+    }
+    if (toks.length === 1) best = Math.max(best, jw(toks[0], cl) * 0.8);
+  }
+  return Math.min(1, best);
+}
+const SCHOOL_ALIASES = {
+  "Ohio State": ["the ohio state", "ohio st"], "Michigan State": ["msu", "michigan st"], "Penn State": ["psu", "pennsylvania state", "penn st"], "UCLA": ["california los angeles", "uc los angeles"],
+  "USC": ["southern california", "southern cal", "usc trojans"], "Washington": ["uw", "udub", "washington seattle"], "Indiana": ["iu", "indiana bloomington"], "Maryland": ["umd", "maryland college park"],
+  "Minnesota": ["umn", "minnesota twin cities"], "Illinois": ["uiuc", "illinois urbana champaign", "illinois at urbana champaign"], "Northwestern": ["nu"], "Nebraska": ["unl", "nebraska lincoln"], "Wisconsin": ["uw madison", "wisconsin madison"],
+  "North Carolina": ["unc", "unc chapel hill", "north carolina chapel hill", "north carolina at chapel hill"], "NC State": ["north carolina state", "nc st", "ncsu", "n c state"], "Boston College": ["bc"], "Notre Dame": ["nd"], "Wake Forest": ["wake"],
+  "Virginia": ["uva"], "SMU": ["southern methodist"], "Virginia Tech": ["vt", "va tech", "virginia polytechnic"], "Florida State": ["fsu", "florida st", "fla state"], "Pitt": ["pittsburgh"], "Miami": ["miami fl", "miami florida", "miami fla", "the u"],
+  "California": ["cal", "uc berkeley", "berkeley", "california berkeley", "cal berkeley"], "Louisville": ["uofl"], "Syracuse": ["cuse"], "Colorado": ["cu boulder", "colorado boulder"], "Houston": ["uh"], "UCF": ["central florida"],
+  "Kansas": ["ku"], "Oklahoma State": ["okstate", "ok state", "oklahoma st"], "Texas Tech": ["ttu"], "Arizona State": ["asu", "arizona st"], "Kansas State": ["k state", "kstate", "ksu", "kansas st"], "BYU": ["brigham young"],
+  "West Virginia": ["wvu"], "TCU": ["texas christian"], "Iowa State": ["iowa st"], "Cincinnati": ["cincy"], "Alabama": ["bama"], "Florida": ["uf"], "Georgia": ["uga"], "Mississippi State": ["miss state", "miss st", "mississippi st", "msst"],
+  "Kentucky": ["uk"], "LSU": ["louisiana state"], "Missouri": ["mizzou"], "Ole Miss": ["mississippi"], "South Carolina": ["usc columbia", "south carolina columbia"], "Tennessee": ["tenn", "tennessee knoxville"], "Texas": ["ut austin", "texas austin", "texas at austin"],
+  "Texas A and M": [], "Texas A&M": ["texas am", "tamu", "texas a and m", "a and m"], "Vanderbilt": ["vandy"], "Utah": ["utes"], "Arizona": ["ua"], "Oklahoma": ["ou"]
+};
+let SCHOOLKEYS = [];
+function buildSchoolIndex() {
+  const m = new Map();
+  for (const t of TEAMS) m.set(norm(t), t);
+  for (const [t, al] of Object.entries(SCHOOL_ALIASES)) if (TEAMS.includes(t)) al.forEach(a => m.set(norm(a), t));
+  SCHOOLKEYS = [...m.entries()].sort((a, b) => b[0].length - a[0].length);
+}
+function cleanSchool(s) {
+  let n = norm(s);
+  n = n.replace(/^the university of /, "").replace(/^university of /, "").replace(/^univ of /, "").replace(/\b(university|univ)\b/g, "").replace(/\s+/g, " ").trim();
+  n = n.replace(/\bst\b$/, "state").replace(/\s+/g, " ").trim();
+  return n;
+}
+function resolveSchool(raw) {
+  if (!raw || !String(raw).trim()) return { team: null, how: "blank" };
+  const full = norm(raw), n = cleanSchool(raw);
+  for (const cand of [full, n]) {
+    for (const [k, t] of SCHOOLKEYS) if (cand === k) return { team: t, how: "exact" };
+  }
+  // longest alias that starts the string (handles mascots like "Penn State Nittany Lions")
+  for (const cand of [full, n]) for (const [k, t] of SCHOOLKEYS) if (k.length >= 3 && (cand.startsWith(k + " "))) return { team: t, how: "prefix" };
+  let best = null, bs = 0;
+  for (const [k, t] of SCHOOLKEYS) { if (k.length < 4) continue; const s = jw(n, k); if (s > bs) { bs = s; best = t; } }
+  if (bs >= 0.9) return { team: best, how: "fuzzy", s: bs };
+  return { team: null, how: "unknown" };
+}
+function parseInputName(row, map) {
+  let first = "", last = "", full = "";
+  if (map.first != null && map.last != null && map.first !== "" && map.last !== "") {
+    first = normName(row[map.first]).replace(/,/g, ""); last = normName(row[map.last]).replace(/,/g, "");
+    full = (first + " " + last).trim();
+  } else if (map.name != null && map.name !== "") {
+    const raw = normName(row[map.name]);
+    if (raw.includes(",")) { const [l, f] = raw.split(",").map(x => x.trim()); last = l; first = f || ""; full = (first + " " + last).trim(); }
+    else full = raw;
+  }
+  return { first, last, full: full.replace(/,/g, "").trim() };
+}
+function matchRow(row, map) {
+  const inp = parseInputName(row, map);
+  const schoolRaw = map.school != null && map.school !== "" ? row[map.school] : "";
+  const sch = resolveSchool(schoolRaw);
+  if (!inp.full) return { inp, sch, status: "no", cands: [], why: "No name in this row" };
+  let pool = sch.team ? P.filter(p => p.team === sch.team) : P;
+  let cands = pool.map(p => ({ p, s: nameScore(inp, p) })).sort((a, b) => b.s - a.s).slice(0, 6);
+  let offTeam = false;
+  if (sch.team && (!cands.length || cands[0].s < 0.86)) {
+    const all = P.filter(p => p.team !== sch.team).map(p => ({ p, s: nameScore(inp, p) })).filter(c => c.s >= 0.93).sort((a, b) => b.s - a.s).slice(0, 3);
+    if (all.length && (!cands.length || all[0].s > cands[0].s + 0.04)) { cands = [...all.map(c => ({ ...c, off: true })), ...cands].slice(0, 6); offTeam = true; }
+  }
+  const b = cands[0], second = cands[1];
+  let status, why;
+  if (!b || b.s < 0.8) { status = "no"; why = sch.team ? `No close name on the ${sch.team} roster` : (sch.how === "blank" ? "No school given and no close name" : `School "${schoolRaw}" is not a Power 4 team in this data`); }
+  else if (!sch.team) {
+    const close = cands.filter(c => c.s >= b.s - 0.03 && c.s >= 0.85);
+    if (b.s >= 0.97 && close.length === 1) { status = "rev"; why = sch.how === "blank" ? "No school given; one strong name match" : `School "${schoolRaw}" not recognized; one strong name match`; }
+    else if (close.length > 1) { status = "rev"; why = `${close.length} players share this name; pick one`; }
+    else { status = b.s >= 0.9 ? "rev" : "no"; why = sch.how === "blank" ? "No school given" : `School "${schoolRaw}" not recognized`; }
+  } else if (b.off) { status = "rev"; why = `Best name match plays for ${b.p.team}, not ${sch.team}`; }
+  else if (b.s >= 0.9 && (!second || second.s < b.s - 0.06 || second.s < 0.85)) { status = "ok"; why = b.s >= 0.995 ? "Exact match" : "Close match"; }
+  else if (second && second.s >= b.s - 0.06 && second.s >= 0.85) { status = "rev"; why = `Two similar names on ${sch.team}`; }
+  else { status = "rev"; why = "Partial name match; check it"; }
+  if (sch.how === "fuzzy" && status === "ok") why += ` (school read as ${sch.team})`;
+  const ambiguous = /share this name|Two similar names/.test(why || "");
+  return { inp, sch, status, cands, why, pick: status === "ok" || (status === "rev" && !ambiguous) ? b.p.id : null };
+}
+
+/* ---------- portal list (stored in Supabase) ---------- */
+const HDR = { name: /^(player|player name|name|full name|athlete|athlete name|student athlete)$/i, first: /^(first|first name|firstname|given name|fname)$/i, last: /^(last|last name|lastname|surname|family name|lname)$/i, school: /(school|team|college|institution|university|previous|current|from|origin)/i };
+const PT = { entries: [], uploads: [], latest: null, pending: null, saving: false };
+const STATUS_DB = { ok: "matched", rev: "review", no: "not_found" };
+const STATUS_UI = { matched: "ok", review: "rev", not_found: "no", picked: "man" };
+function rawName(row, map) { return map.first !== "" && map.last !== "" && map.first != null ? `${row[map.first] ?? ""} ${row[map.last] ?? ""}`.trim() : String(row[map.name] ?? "").trim(); }
+function rawSchool(row, map) { return map.school !== "" && map.school != null ? String(row[map.school] ?? "").trim() : ""; }
+function entryKey(name, school) {
+  const toks = normName(name).replace(/,/g, " ").split(" ").filter(Boolean).sort().join(" ");
+  const team = resolveSchool(school).team;
+  return toks + "|" + (team ? norm(team) : norm(school));
+}
+// stage a parsed file: detect columns, then wait for the user to confirm before saving
+function stage(rows, fileName) {
+  rows = rows.map(r => r.map(c => c == null ? "" : String(c).trim())).filter(r => r.some(c => c));
+  if (!rows.length) { toast("That file has no rows"); return; }
+  const h0 = rows[0];
+  const looksHeader = h0.some(c => HDR.name.test(c) || HDR.first.test(c) || HDR.last.test(c) || HDR.school.test(c));
+  const headers = looksHeader ? h0.map((c, i) => c || `Column ${i + 1}`) : h0.map((_, i) => `Column ${i + 1}`);
+  const data = looksHeader ? rows.slice(1) : rows;
+  const map = { name: "", first: "", last: "", school: "" };
+  headers.forEach((h, i) => { for (const k of ["first", "last", "name", "school"]) if (map[k] === "" && HDR[k].test(h)) { map[k] = i; break; } });
+  if (map.name === "" && map.first === "" && map.last === "") map.name = 0;
+  if (map.school === "") map.school = headers.findIndex((_, i) => i !== map.name && i !== map.first && i !== map.last);
+  if (map.school === -1) map.school = "";
+  if (map.first !== "" && map.last !== "") map.name = "";
+  PT.pending = { rows: data, headers, map, fileName };
+  if (location.hash !== "#portal") location.hash = "portal"; else renderPortal();
+}
+function pendingPlan() {
+  const pd = PT.pending, have = new Set(PT.entries.map(e => e.entry_key));
+  const seen = new Set(), fresh = [], again = [];
+  let blank = 0;
+  pd.rows.forEach(r => {
+    const nm = rawName(r, pd.map); if (!nm) { blank++; return; }
+    const key = entryKey(nm, rawSchool(r, pd.map));
+    if (seen.has(key)) return; seen.add(key);
+    (have.has(key) ? again : fresh).push({ r, key, nm });
+  });
+  return { fresh, again, blank };
+}
+async function savePending() {
+  if (PT.saving || !PT.pending) return;
+  PT.saving = true; renderPortal();
+  const pd = PT.pending, plan = pendingPlan();
+  try {
+    const { data: up, error: e1 } = await sb.from("portal_uploads").insert({ file_name: pd.fileName, row_count: plan.fresh.length + plan.again.length, new_row_count: plan.fresh.length }).select().single();
+    if (e1) throw e1;
+    const rows = plan.fresh.map(({ r, key, nm }) => {
+      const m = matchRow(r, pd.map);
+      const c = m.cands.find(c => c.p.id === m.pick);
+      return { entry_key: key, raw_name: nm, raw_school: rawSchool(r, pd.map) || null, raw_row: Object.fromEntries(pd.headers.map((h, i) => [h, r[i] ?? ""])), first_upload_id: up.id, last_upload_id: up.id, player_id: m.pick != null ? P[m.pick].dbId : null, match_status: STATUS_DB[m.status], match_score: c ? Math.round(c.s * 1000) / 1000 : null };
+    });
+    for (let i = 0; i < rows.length; i += 500) { const { error } = await sb.from("portal_entries").insert(rows.slice(i, i + 500)); if (error) throw error; }
+    const keys = plan.again.map(x => x.key);
+    for (let i = 0; i < keys.length; i += 200) { const { error } = await sb.from("portal_entries").update({ last_upload_id: up.id }).in("entry_key", keys.slice(i, i + 200)); if (error) throw error; }
+    PT.pending = null; $("#pasteIn").value = "";
+    toast(`Added ${plan.fresh.length} new player${plan.fresh.length === 1 ? "" : "s"}`);
+    S.portal.filter = plan.fresh.length ? "new" : "";
+    await loadPortal();
+  } catch (e) { toast("Couldn't save the list: " + (e.message || e)); }
+  PT.saving = false; renderPortal();
+}
+async function loadPortal() {
+  const [entries, uploads] = await Promise.all([fetchAll("portal_entries", "*", "id"), fetchAll("portal_uploads", "*", "id")]);
+  uploads.sort((a, b) => b.id - a.id);
+  PT.uploads = uploads; PT.latest = uploads[0] ? uploads[0].id : null;
+  PT.entries = entries.map(e => {
+    const auto = matchRow([e.raw_name, e.raw_school || ""], { name: 0, school: 1, first: "", last: "" });
+    const p = e.player_id != null ? byDbId.get(e.player_id) : null;
+    if (p && !auto.cands.find(c => c.p.id === p.id)) auto.cands.unshift({ p, s: nameScore(auto.inp, p) });
+    return { ...e, auto, pick: p ? p.id : null, ui: STATUS_UI[e.match_status] || "no", isNew: e.first_upload_id === PT.latest };
+  });
+  updatePortalIds(); rerenderView();
+}
+function updatePortalIds() {
+  const live = PT.entries.filter(e => e.pick != null);
+  portalIds = new Set(live.map(e => e.pick));
+  newIds = new Set(live.filter(e => e.isNew).map(e => e.pick));
+  const c = $("#portalCount"); c.textContent = portalIds.size; c.hidden = !portalIds.size;
+}
+async function setPick(entry, pick, reset) {
+  let body;
+  if (reset) { const a = entry.auto; const c = a.cands.find(c => c.p.id === a.pick); body = { player_id: a.pick != null ? P[a.pick].dbId : null, match_status: STATUS_DB[a.status], match_score: c ? Math.round(c.s * 1000) / 1000 : null }; }
+  else body = { player_id: pick != null ? P[pick].dbId : null, match_status: "picked" };
+  const { error } = await sb.from("portal_entries").update(body).eq("id", entry.id);
+  if (error) { toast("Couldn't save that change: " + error.message); return; }
+  await loadPortal();
+}
+async function readFile(file) {
+  const buf = await file.arrayBuffer();
+  let rows;
+  if (/\.(csv|txt|tsv)$/i.test(file.name)) {
+    const text = new TextDecoder().decode(buf);
+    const wb = XLSX.read(text, { type: "string", raw: true });
+    rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "", raw: false });
+  } else {
+    const wb = XLSX.read(buf, { type: "array" });
+    rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "", raw: false });
+  }
+  stage(rows, file.name);
+}
+const fmtDay = iso => { try { return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); } catch (e) { return ""; } };
+
+/* ---------- PORTAL view ---------- */
+function renderSide() {
+  const el = $("#sidePanel");
+  if (PT.pending) {
+    const pd = PT.pending, plan = pendingPlan();
+    const opt = sel => `<option value="">(none)</option>` + pd.headers.map((h, i) => `<option value="${i}" ${String(sel) === String(i) ? "selected" : ""}>${esc(h)}</option>`).join("");
+    el.innerHTML = `<h3>Check before saving</h3>
+      <p class="note">${esc(pd.fileName)}: ${pd.rows.length} rows. Columns were detected from your headers; change one if it was read wrong.</p>
+      <div class="mapping">${[["name", "Full name"], ["first", "First name"], ["last", "Last name"], ["school", "School"]].map(([k, l]) => `<label class="field"><span>${l}</span><select data-map="${k}">${opt(pd.map[k])}</select></label>`).join("")}</div>
+      <div class="preview"><div><span class="big">${plan.fresh.length}</span> new player${plan.fresh.length === 1 ? "" : "s"} to add</div>
+      <p class="note">${plan.again.length} already on the portal board will stay as they are.${plan.blank ? ` ${plan.blank} rows have no name and will be skipped.` : ""}</p></div>
+      <div class="row"><button class="primary" id="saveList" ${PT.saving ? "disabled" : ""}>${PT.saving ? "Saving&hellip;" : plan.fresh.length ? `Add ${plan.fresh.length} to the portal list` : "Save this list"}</button><button id="cancelList" ${PT.saving ? "disabled" : ""}>Cancel</button></div>`;
+    $$("[data-map]", el).forEach(s => s.onchange = () => { pd.map[s.dataset.map] = s.value === "" ? "" : +s.value; renderPortal(); });
+    $("#saveList").onclick = savePending;
+    $("#cancelList").onclick = () => { PT.pending = null; renderPortal(); };
+    return;
+  }
+  el.innerHTML = `<h3>Lists added</h3>${PT.uploads.length ? `<div class="uploads">${PT.uploads.slice(0, 8).map((u, i) => `<div class="u"><span><b>${esc(u.file_name || "Pasted rows")}</b>${i === 0 ? `<span class="tag-new">Latest</span>` : ""}<br><span class="note">${esc(fmtDay(u.uploaded_at))}</span></span><span class="note" style="text-align:right">${u.new_row_count} new<br>${u.row_count} rows</span></div>`).join("")}</div>${PT.uploads.length > 8 ? `<p class="note">${PT.uploads.length - 8} older lists not shown.</p>` : ""}` : `<p class="note">No lists yet. The first file you add becomes the portal board.</p>`}`;
+}
+function renderPortal() {
+  renderSide();
+  const all = PT.entries;
+  $("#portalActions").hidden = !all.length;
+  if (!all.length) { $("#matchSummary").innerHTML = ""; $("#mTable").innerHTML = `<tbody><tr><td class="l" style="padding:24px;color:var(--muted)">No portal players yet. Choose a file to start the list.</td></tr></tbody>`; return; }
+  const f = S.portal.filter;
+  const counts = { ok: 0, rev: 0, no: 0, man: 0 }; all.forEach(e => counts[e.ui]++);
+  const nNew = all.filter(e => e.isNew).length;
+  const box = (k, n, t) => `<button class="stat ${k}" data-f="${k}" aria-pressed="${f === k}"><div class="n">${n}</div><div class="t">${t}</div></button>`;
+  $("#matchSummary").innerHTML = box("", all.length, "On the board") + box("new", nNew, "New in latest list") + box("ok", counts.ok, "Matched") + box("man", counts.man, "Picked by staff") + box("rev", counts.rev, "Needs review") + box("no", counts.no, "Not found");
+  $$("#matchSummary .stat").forEach(b => b.onclick = () => { S.portal.filter = S.portal.filter === b.dataset.f ? "" : b.dataset.f; renderPortal(); });
+  const order = { rev: 0, no: 1, man: 2, ok: 3 };
+  const list = all.filter(e => !f || (f === "new" ? e.isNew : e.ui === f)).sort((a, b) => (b.isNew - a.isNew) || order[a.ui] - order[b.ui] || a.id - b.id);
+  const label = { ok: "Matched", rev: "Review", no: "Not found", man: "Picked" };
+  const why = e => e.ui === "man" ? (e.pick == null ? "Staff marked no match" : "Picked by staff") : e.auto.why;
+  $("#mTable").innerHTML = `<thead><tr><th class="l" data-nosort>Portal list</th><th class="l" data-nosort>School</th><th class="l" data-nosort>Status</th><th class="l" data-nosort>Matched player</th><th data-nosort>Match</th><th class="l" data-nosort>Pos</th><th data-nosort>MIN</th><th data-nosort>G</th><th data-nosort>A</th><th data-nosort>PTS/90</th><th data-nosort>SV%</th><th class="l" data-nosort>Added</th></tr></thead><tbody>` +
+    list.map(e => {
+      const p = e.pick != null ? P[e.pick] : null; const c = e.auto.cands.find(c => c.p.id === e.pick);
+      const added = PT.uploads.find(u => u.id === e.first_upload_id);
+      return `<tr class="${e.isNew ? "is-new" : ""}">
+        <td class="l player">${esc(e.raw_name)}${e.isNew ? `<span class="tag-new">New</span>` : ""}</td>
+        <td class="l">${esc(e.raw_school || "")}${e.auto.sch.team && norm(e.auto.sch.team) !== norm(e.raw_school) ? `<small class="note" style="display:block">read as ${esc(e.auto.sch.team)}</small>` : ""}</td>
+        <td class="l"><span class="pill ${e.ui}">${label[e.ui]}</span><span class="why">${esc(why(e))}</span></td>
+        <td class="l"><select data-pick="${e.id}" aria-label="Matched player for ${esc(e.raw_name)}">
+          <option value="">No match</option>
+          ${e.auto.cands.map(c => `<option value="${c.p.id}" ${c.p.id === e.pick ? "selected" : ""}>${esc(c.p.name)} &middot; ${esc(c.p.team)} &middot; ${esc(c.p.pos)} (${Math.round(c.s * 100)}%)</option>`).join("")}
+        </select>${p ? `<button class="notebtn" data-note="${p.id}" title="Staff notes for ${esc(p.name)}">${NOTE_SVG}${notesFor(p).length ? notesFor(p).length : "Notes"}</button>` : ""}${e.ui === "man" ? ` <button class="link small" data-reset="${e.id}">Undo</button>` : ""}</td>
+        <td class="num">${c ? Math.round(c.s * 100) + "%" : `<span class="na">&ndash;</span>`}</td>
+        <td class="l">${p ? `<span class="pos">${esc(p.pos)}</span>` : ""}</td>
+        <td class="num">${p ? fmt("MIN", p.MIN) : ""}</td><td class="num">${p ? fmt("G", p.G) : ""}</td><td class="num">${p ? fmt("A", p.A) : ""}</td><td class="num">${p ? fmt("PTS90", p.PTS90) : ""}</td><td class="num">${p && p.SVpct != null ? fmt("SVpct", p.SVpct) : ""}</td>
+        <td class="l note">${esc(added ? fmtDay(added.uploaded_at) : "")}</td>
+      </tr>`;
+    }).join("") + `</tbody>`;
+  const byId = new Map(all.map(e => [String(e.id), e]));
+  $$("[data-pick]").forEach(s => s.onchange = () => setPick(byId.get(s.dataset.pick), s.value === "" ? null : +s.value));
+  $$("[data-reset]").forEach(b => b.onclick = () => setPick(byId.get(b.dataset.reset), null, true));
+}
+function initPortal() {
+  const drop = $("#drop"), fi = $("#fileIn");
+  $("#pickFile").onclick = () => fi.click();
+  fi.onchange = () => { if (fi.files[0]) readFile(fi.files[0]).catch(e => toast("Could not read that file: " + e.message)); fi.value = ""; };
+  ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) readFile(f).catch(er => toast("Could not read that file: " + er.message)); });
+  $("#pasteGo").onclick = () => {
+    const t = $("#pasteIn").value; if (!t.trim()) return;
+    const rows = t.includes("\t") ? t.split(/\r?\n/).map(l => l.split("\t")) : parseCSV(t);
+    stage(rows, "Pasted rows");
+  };
+  $("#copyPortal").onclick = () => {
+    const cols = ["name", "team", "conf", "pos", "MIN", "GP", "GS", "G", "A", "PTS", "G90", "A90", "PTS90", "SH90", "SOGpct", "GAA", "SVpct"];
+    const head = ["Player", "Team", "Conference", "Pos", "New", "MIN", "GP", "GS", "G", "A", "PTS", "G/90", "A/90", "PTS/90", "SH/90", "SOG%", "GAA", "SV%"];
+    const cell = v => v == null ? "" : typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(3)) : v;
+    const lines = [head.join("\t"), ...[...portalIds].map(id => P[id]).map(p => [cell(p.name), p.team, p.conf, p.pos, newIds.has(p.id) ? "New" : "", ...cols.slice(4).map(k => cell(p[k]))].join("\t"))];
+    const txt = lines.join("\n");
+    navigator.clipboard.writeText(txt).then(() => toast(`Copied ${portalIds.size} players`)).catch(() => { $("#pasteIn").closest("details").open = true; $("#pasteIn").value = txt; $("#pasteIn").select(); toast("Copy blocked; the rows are selected in the paste box"); });
+  };
+  $("#toRankings").onclick = () => { S.r.scope = "portal"; location.hash = "rankings"; };
+}
+
+/* ---------- RANKINGS view ---------- */
+const SMALL_SAMPLE = 300; // minutes; only used to label small samples, never to filter
+function tierOf(s) { return s >= 85 ? ["t1", "Priority target"] : s >= 70 ? ["t2", "Strong fit"] : s >= 55 ? ["t3", "Rotation"] : ["t4", "Depth"]; }
+const ordinal = n => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+function renderRankings(onlyTable) {
+  const r = S.r, pos = r.pos, w = r.weights[pos], min = r.min[pos];
+  $("#rPos").innerHTML = ["F", "M", "D", "GK"].map(k => `<button data-p="${k}" aria-pressed="${k === pos}">${POSNAMES[k]}</button>`).join("");
+  $$("#rPos button").forEach(b => b.onclick = () => { r.pos = b.dataset.p; r.sort = "score"; r.dir = -1; renderRankings(); });
+  $$("#rScope button").forEach(b => b.setAttribute("aria-pressed", b.dataset.s === r.scope));
+  if (!onlyTable) renderWeights($("#rWeights"), w, {
+    id: "rw", title: `What matters for ${POSNAMES[pos].toLowerCase()}`, kind: pos === "GK" ? "gk" : "field",
+    empty: "Add at least one metric to rank players.",
+    presets: [{ label: "Reset to default", w: PRESETS[pos].w }, ...(pos === "M" ? Object.entries(EXTRA_PRESETS).map(([l, ww]) => ({ label: l, w: ww })) : pos === "D" ? [{ label: "Attacking fullback", w: { A90: 3, PTS90: 3, MINpg: 2, GSpct: 2, SH90: 1 } }] : pos === "F" ? [{ label: "Playmaking forward", w: { A90: 4, PTS90: 3, G90: 2, SOGpct: 1, MIN: 1 } }] : [{ label: "Busy keeper", w: { SV90: 3, SVpct: 4, GKMIN: 2, SF90: 1 } }])],
+    change: (live) => { store.set("rWeights", r.weights); live ? renderRankings(true) : renderRankings(); }
+  });
+  const table = percentiles(pos, min);
+  const pool = poolFor(pos, min);
+  const portalPool = P.filter(p => portalIds.has(p.id) && p.groups.includes(pos));
+  let rows = (r.scope === "portal" ? portalPool : pool).filter(p => !r.conf || p.conf === r.conf);
+  rows.forEach(p => { p._r = scoreOf(p, table, w); const mins = pos === "GK" ? p.GKMIN : p.MIN; p._low = !(mins >= SMALL_SAMPLE); });
+  const hasW = Object.values(w).some(v => v > 0);
+  const getter = (p, k) => k === "score" ? p._r.score : k === "name" ? p.last + " " + p.first : k === "team" ? p.team : p[k];
+  sortRows(rows, r.sort, r.dir, getter);
+  // ranks by score among the shown scope
+  const byScore = [...rows].filter(p => p._r.score != null).sort((a, b) => b._r.score - a._r.score);
+  byScore.forEach((p, i) => p._rank = i + 1);
+  const top = rows.slice(0, r.top);
+  // note
+  const lowN = r.scope === "portal" ? portalPool.filter(p => { const m = pos === "GK" ? p.GKMIN : p.MIN; return !(m >= SMALL_SAMPLE); }).length : 0;
+  $("#rNote").innerHTML = r.scope === "portal"
+    ? (portalIds.size ? `Showing <b>${rows.length}</b> portal ${POSNAMES[pos].toLowerCase()}, scored against all ${pool.length.toLocaleString("en-US")} Power 4 ${POSNAMES[pos].toLowerCase()}.${lowN ? ` ${lowN} of them played fewer than ${SMALL_SAMPLE} minutes, so treat their scores as small samples.` : ""}` : `No portal list loaded. <button class="link" id="goPortal">Load one on the Portal list tab</button> or switch to All Power 4.`)
+    : `Ranking <b>${rows.length.toLocaleString("en-US")}</b> ${POSNAMES[pos].toLowerCase()}${r.conf ? " in the " + esc(r.conf) : ""}. Players under ${SMALL_SAMPLE} minutes are marked as small samples.`;
+  const gp = $("#goPortal"); if (gp) gp.onclick = () => location.hash = "portal";
+  // recommendation cards: top 6 by score
+  const recs = byScore.slice(0, 6);
+  $("#recHead").textContent = r.scope === "portal" ? `Top portal ${POSNAMES[pos].toLowerCase()} to pursue` : `Top ${POSNAMES[pos].toLowerCase()} in the Power 4`;
+  $("#recs").innerHTML = recs.length && hasW ? recs.map(p => {
+    const parts = [...p._r.parts].sort((a, b) => b.pc * Math.sqrt(b.wt) - a.pc * Math.sqrt(a.wt));
+    const strong = parts.filter(x => x.pc >= 70).slice(0, 3);
+    const weak = [...p._r.parts].sort((a, b) => a.pc - b.pc).filter(x => x.pc < 40).slice(0, 1);
+    const [tc, tl] = tierOf(p._r.score);
+    const line = x => `${M[x.k].n}: <b>${M[x.k].f(p[x.k])}</b> (${ordinal(Math.round(x.pc))} pct)`;
+    return `<article class="rec"><div class="hd"><div><div class="nm">${nameBtn(p)}${portalTag(p)}</div><div class="tm">${esc(p.team)} &middot; ${esc(p.conf)} &middot; ${esc(p.pos)} &middot; ${fmt("MIN", pos === "GK" ? p.GKMIN : p.MIN)} min</div></div><div style="text-align:right"><div class="big">${p._r.score.toFixed(0)}</div><span class="tier ${tc}">${tl}</span></div></div>
+      <ul>${strong.map(x => `<li>${line(x)}</li>`).join("") || `<li>Solid across the board without a standout metric</li>`}${weak.map(x => `<li class="minus">Watch: ${line(x)}</li>`).join("")}${p._low ? `<li class="minus">Small sample: under ${SMALL_SAMPLE} minutes</li>` : ""}${p._r.coverage < 0.75 ? `<li class="minus">Missing data for ${Math.round((1 - p._r.coverage) * 100)}% of the weight</li>` : ""}</ul></article>`;
+  }).join("") : `<p class="empty-w">${hasW ? "No players to recommend with these filters." : "Add weights to see recommendations."}</p>`;
+  // table
+  const wkeys = Object.keys(w).filter(k => w[k] > 0);
+  const extra = pos === "GK" ? ["GKMIN", "GAA", "SVpct", "SHO"] : ["MIN", "G", "A", "PTS"];
+  const colKeys = [...new Set([...extra, ...wkeys])];
+  const cols = [{ k: "rank", h: "Rank", nosort: true }, { k: "name", h: "Player", l: 1 }, { k: "pos", h: "Pos", l: 1, nosort: true }, { k: "score", h: "Score" }, { k: "tier", h: "Tier", l: 1, nosort: true }, { k: "str", h: "Why", l: 1, nosort: true }, ...colKeys.map(k => ({ k, h: M[k].l, t: M[k].n }))];
+  $("#rTable").innerHTML = thead(cols, r.sort, r.dir) + `<tbody>${top.map(p => {
+    const s = p._r.score; const [tc, tl] = s == null ? ["t4", "No data"] : tierOf(s);
+    const best = [...p._r.parts].sort((a, b) => b.pc * Math.sqrt(b.wt) - a.pc * Math.sqrt(a.wt)).filter(x => x.pc >= 60).slice(0, 2);
+    return `<tr><td class="rank">${p._rank ?? "&ndash;"}</td>${playerCell(p, p.team + " · " + p.conf)}<td class="l"><span class="pos">${esc(p.pos)}</span></td>${scoreCell(s)}<td class="l"><span class="tier ${tc}">${tl}</span></td>
+      <td class="strengths">${best.map(x => `<b>${M[x.k].l}</b> ${ordinal(Math.round(x.pc))} pct`).join(", ") || "&ndash;"}${p._low ? " &middot; small sample" : ""}</td>
+      ${colKeys.map(k => heatCell(k, p[k], table)).join("")}</tr>`;
+  }).join("") || `<tr><td class="l" colspan="${cols.length}" style="padding:24px;color:var(--muted)">No ${POSNAMES[pos].toLowerCase()} to show.</td></tr>`}</tbody>`;
+  $$("#rTable th").forEach(th => { if (th.dataset.nosort) return; th.onclick = () => { const k = th.dataset.sort; if (r.sort === k) r.dir *= -1; else { r.sort = k; r.dir = (k === "name" || (M[k] && M[k].dir < 0)) ? 1 : -1; } renderRankings(true); }; });
+}
+function initRankings() {
+  $$("#rScope button").forEach(b => b.onclick = () => { S.r.scope = b.dataset.s; renderRankings(true); });
+  $("#rConf").onchange = e => { S.r.conf = e.target.value; renderRankings(true); };
+  $("#rTop").onchange = e => { S.r.top = +e.target.value; renderRankings(true); };
+  $("#rReset").onclick = () => { S.r.sort = "score"; S.r.dir = -1; renderRankings(true); toast("Sorted by score"); };
+}
+
+/* ---------- staff notes (Supabase table staff_notes) ---------- */
+const NOTES = { me: null, byPlayer: new Map(), open: null, loaded: false };
+function notesFor(p) { return NOTES.byPlayer.get(p.dbId) || []; }
+async function loadNotes() {
+  const rows = await fetchAll("staff_notes", "id, player_id, body, author_id, author_email, created_at", "id");
+  const m = new Map();
+  for (const n of rows) { if (!m.has(n.player_id)) m.set(n.player_id, []); m.get(n.player_id).push(n); }
+  for (const arr of m.values()) arr.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  NOTES.byPlayer = m; NOTES.loaded = true;
+  rerenderView();
+}
+function rerenderView() {
+  if (!P.length) return;
+  if (S.view === "players") renderPlayers(true); else if (S.view === "portal") renderPortal(); else renderRankings(true);
+  if (NOTES.open != null) renderNoteList();
+}
+const fmtWhen = iso => { try { return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }); } catch (e) { return ""; } };
+function openNotes(id) {
+  const p = P[id]; if (!p) return;
+  NOTES.open = id;
+  $("#noteTitle").textContent = p.name;
+  $("#noteSub").textContent = `${p.team} · ${p.conf} · ${p.pos} · ${p.MIN != null ? Math.round(p.MIN).toLocaleString("en-US") + " min" : "no minutes"}${p.G != null ? ` · ${p.G} G, ${p.A} A` : ""}${p.SVpct != null ? ` · ${p.SVpct.toFixed(3).replace(/^0/, "")} SV%` : ""}`;
+  $("#noteText").value = ""; $("#noteAdd").disabled = true;
+  $("#noteModal").hidden = false;
+  renderNoteList();
+  setTimeout(() => $("#noteText").focus(), 0);
+}
+function closeNotes() { $("#noteModal").hidden = true; NOTES.open = null; }
+function renderNoteList() {
+  const p = P[NOTES.open]; if (!p) return;
+  const list = notesFor(p);
+  $("#noteStatus").textContent = "Shared with every signed-in staff member.";
+  if (!list.length) { $("#noteList").innerHTML = `<p class="empty-w">${NOTES.loaded ? "No notes on this player yet." : "Loading notes&hellip;"}</p>`; return; }
+  $("#noteList").innerHTML = list.map(n => {
+    const who = n.author_id === NOTES.me ? "You" : (n.author_email || "Staff member");
+    return `<article class="nitem"><p></p><div class="meta"><span>${esc(who)} &middot; ${esc(fmtWhen(n.created_at))}</span>${n.author_id === NOTES.me ? `<button class="link" data-delnote="${n.id}">Delete</button>` : ""}</div></article>`;
+  }).join("");
+  $$("#noteList .nitem p").forEach((el, i) => el.textContent = list[i].body);
+}
+async function addNote() {
+  const p = P[NOTES.open]; const text = $("#noteText").value.trim();
+  if (!p || !text) return;
+  $("#noteAdd").disabled = true;
+  const { error } = await sb.from("staff_notes").insert({ player_id: p.dbId, body: text.slice(0, 4000) });
+  if (error) { $("#noteAdd").disabled = false; toast("Couldn't save the note: " + error.message); return; }
+  $("#noteText").value = ""; toast("Note added"); await loadNotes();
+}
+async function deleteNote(id) {
+  const { error } = await sb.from("staff_notes").delete().eq("id", id);
+  if (error) { toast("Couldn't delete the note: " + error.message); return; }
+  toast("Note deleted"); await loadNotes();
+}
+function initNoteUI() {
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-note]"); if (b) { e.preventDefault(); openNotes(+b.dataset.note); return; }
+    const d = e.target.closest("[data-delnote]"); if (d) { deleteNote(+d.dataset.delnote); return; }
+  });
+  $("#noteClose").onclick = closeNotes;
+  $("#noteModal").addEventListener("click", e => { if (e.target.id === "noteModal") closeNotes(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#noteModal").hidden) closeNotes(); });
+  $("#noteText").addEventListener("input", e => { $("#noteAdd").disabled = !e.target.value.trim(); });
+  $("#noteText").addEventListener("keydown", e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); addNote(); } });
+  $("#noteAdd").onclick = addNote;
+}
+// live updates: when another staff member adds a note or a list, refresh
+function subscribeLive() {
+  let tN, tP;
+  sb.channel("portal-board")
+    .on("postgres_changes", { event: "*", schema: "public", table: "staff_notes" }, () => { clearTimeout(tN); tN = setTimeout(loadNotes, 400); })
+    .on("postgres_changes", { event: "*", schema: "public", table: "portal_entries" }, () => { clearTimeout(tP); tP = setTimeout(loadPortal, 800); })
+    .subscribe();
+}
+
+/* ---------- routing ---------- */
+function route() {
+  const v = (location.hash || "#players").slice(1);
+  S.view = ["players", "portal", "rankings"].includes(v) ? v : "players";
+  $$("nav.tabs a").forEach(a => a.setAttribute("aria-current", a.dataset.view === S.view ? "page" : "false"));
+  $$(".view").forEach(s => s.hidden = s.id !== "view-" + S.view);
+  if (S.view === "players") renderPlayers(); else if (S.view === "portal") renderPortal(); else renderRankings();
+}
+const SUPABASE_URL = "https://gwtuslegwucxkpzpqgfo.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3dHVzbGVnd3VjeGtwenBxZ2ZvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUxODczNDEsImV4cCI6MjExMDc2MzM0MX0.nY1x5GBKSAhUFt7C3FwbsHo2GvX9LJpwwie6IfS_ItE";
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+let started = false;
+async function startApp(session) {
+  NOTES.me = session.user.id;
+  $("#whoEmail").textContent = session.user.email || "";
+  $("#whoami").hidden = false; $("#auth").hidden = true;
+  if (started) return; started = true;
+  $("#loading").hidden = false;
+  try { await loadData(); }
+  catch (e) {
+    if (/No players found/.test(e.message) && window.SEED_PLAYERS) {
+      $("#loading").innerHTML = `<div style="display:grid;gap:10px;justify-items:center"><b>The player stats aren't in Supabase yet.</b><span>This one-time step loads all ${window.SEED_PLAYERS.length.toLocaleString("en-US")} players from the 2026 season.</span><button class="primary" id="seedGo">Load the 2026 stats</button><span class="note" id="seedMsg"></span></div>`;
+      $("#seedGo").onclick = async () => {
+        $("#seedGo").disabled = true; $("#seedMsg").textContent = "Loading\u2026";
+        const { data, error } = await sb.rpc("load_players_once", { rows: window.SEED_PLAYERS });
+        if (error) { $("#seedMsg").textContent = "Couldn't load the stats: " + error.message; $("#seedGo").disabled = false; return; }
+        $("#seedMsg").textContent = `Loaded ${data} players. Opening the board\u2026`;
+        setTimeout(() => location.reload(), 800);
+      };
+    } else $("#loading").innerHTML = `Could not load player stats. ${esc(e.message)}`;
+    started = false; return;
+  }
+  buildSchoolIndex();
+  $("#loading").hidden = true;
+  initPlayers(); initPortal(); initRankings(); initNoteUI();
+  window.addEventListener("hashchange", route);
+  route();
+  try { await Promise.all([loadPortal(), loadNotes()]); } catch (e) { toast("Couldn't load portal list or notes: " + e.message); }
+  subscribeLive();
+}
+function showSignIn() { $("#auth").hidden = false; $("#loading").hidden = true; $("#whoami").hidden = true; $$(".view").forEach(v => v.hidden = true); }
+$("#authForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("#authErr").textContent = ""; $("#authGo").disabled = true;
+  const { data, error } = await sb.auth.signInWithPassword({ email: $("#authEmail").value.trim(), password: $("#authPass").value });
+  $("#authGo").disabled = false;
+  if (error) { $("#authErr").textContent = error.message === "Invalid login credentials" ? "That email and password don't match a staff account." : error.message; return; }
+  startApp(data.session);
+});
+$("#signOut").onclick = async () => { await sb.auth.signOut(); location.reload(); };
+(async () => {
+  if (!sb) {
+    $("#loading").innerHTML = `<div style="display:grid;gap:8px;justify-items:center;max-width:60ch;margin:0 auto"><b>Sign-in can't load here.</b><span>This page needs to open in a regular web browser with an internet connection. If you opened it inside Claude, download the file and open it in Safari, Chrome or Edge instead.</span></div>`;
+    return;
+  }
+  $("#loading").hidden = true;
+  const { data } = await sb.auth.getSession();
+  if (data.session) startApp(data.session); else showSignIn();
+})();
+</script>
+
+</body></html>
