@@ -109,6 +109,9 @@ td .na { color: var(--na); }
 td.rank { color: var(--muted); font-family: var(--mono); font-size: 12px; width: 1%; }
 td.player { font-weight: 600; }
 td.player small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+td.player.inline { white-space: nowrap; vertical-align: middle; }
+td.player.inline .sch { font-weight: 400; color: var(--muted); font-size: 12.5px; margin-left: 8px; }
+#pTable td { vertical-align: middle; }
 .pos { font-family: var(--mono); font-size: 11.5px; border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 4px; color: var(--ink); }
 .conf { font-size: 12px; color: var(--muted); }
 .tag-portal { display: inline-block; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--portal); background: var(--portal-soft); border-radius: 3px; padding: 1px 5px; margin-left: 6px; vertical-align: 1px; }
@@ -150,11 +153,6 @@ td .why { display: block; font-size: 11.5px; color: var(--muted); white-space: n
 .rec .big { font-family: var(--display); font-weight: 700; font-size: 32px; line-height: 1; color: var(--orange-text); }
 .rec ul { margin: 0; padding-left: 16px; font-size: 12.5px; }
 .rec li.minus { color: var(--muted); }
-.tier { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
-.tier.t1 { background: var(--accent); color: #fff; }
-.tier.t2 { background: var(--accent-soft); color: var(--accent); }
-.tier.t3 { background: var(--line); color: var(--ink); }
-.tier.t4 { background: transparent; color: var(--muted); border: 1px solid var(--line-strong); }
 .posbar { display: flex; gap: 6px; flex-wrap: wrap; }
 .posbar button { font-family: var(--display); font-size: 17px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; padding: 0 14px; }
 .posbar button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
@@ -300,7 +298,7 @@ details summary { cursor: pointer; color: var(--accent); font-size: 13px; }
     <div><h3 style="margin-bottom:8px" id="recHead">Top recommendations</h3><div class="recs" id="recs"></div></div>
     <div class="row" style="justify-content:flex-end"><button id="rReset">Reset sorting</button></div>
     <div class="tablewrap"><table id="rTable"></table></div>
-    <p class="note">Tiers: <span class="tier t1">Priority target</span> score 85+, <span class="tier t2">Strong fit</span> 70&ndash;84, <span class="tier t3">Rotation</span> 55&ndash;69, <span class="tier t4">Depth</span> below 55. Scores are percentiles (0&ndash;100) blended by your weights. Box-score stats say little about defending, so defender rankings lean on availability, starts, discipline and attacking output. SEC schools on WMT Stats have no PK or shots-faced data; those metrics are skipped for them and the remaining weights are rebalanced.</p>
+    <p class="note">Scores run 0 to 100 (higher is better), built from percentiles blended by your weights. Box-score stats say little about defending, so defender rankings lean on availability, starts, discipline and attacking output. SEC schools on WMT Stats have no PK or shots-faced data; those metrics are skipped for them and the remaining weights are rebalanced.</p>
   </section>
 </main>
 <div class="modal-bg" id="noteModal" hidden>
@@ -538,13 +536,16 @@ function heatCell(k, v, table) {
   const bg = pc == null ? "" : `background:rgba(var(--heat),${(Math.max(0, pc - 50) / 50 * 0.26).toFixed(3)})`;
   return `<td class="num" style="${bg}" title="${pc == null ? "" : Math.round(pc) + "th percentile"}">${fmt(k, v)}</td>`;
 }
-function scoreCell(s) {
+function scoreCell(s, bar = true) {
   if (s == null) return `<td class="num"><span class="na">&ndash;</span></td>`;
-  return `<td><div class="score"><span class="bar"><i style="width:${s.toFixed(0)}%"></i></span><b>${s.toFixed(0)}</b></div></td>`;
+  return `<td><div class="score">${bar ? `<span class="bar"><i style="width:${s.toFixed(0)}%"></i></span>` : ""}<b>${s.toFixed(0)}</b></div></td>`;
 }
 const NOTE_SVG = `<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 1.75h7l3 3v9.5H3z"/><path d="M5.5 7h5M5.5 9.5h5M5.5 12h3"/></svg>`;
 function noteFlag(p) { const n = notesFor(p).length; return n ? `<span class="nflag" title="${n} staff note${n > 1 ? "s" : ""}">${NOTE_SVG}${n > 1 ? n : ""}</span>` : ""; }
 function nameBtn(p) { return `<button class="pname" data-note="${p.id}" title="Open staff notes">${esc(p.name)}</button>${noteFlag(p)}`; }
+function playerInline(p) {
+  return `<td class="l player inline">${nameBtn(p)}${portalTag(p)}<span class="sch">${esc(p.team)}</span></td>`;
+}
 function portalTag(p) { return portalIds.has(p.id) ? `<span class="tag-portal">Portal</span>${newIds.has(p.id) ? `<span class="tag-new">New</span>` : ""}` : ""; }
 function playerCell(p, sub) {
   return `<td class="l player">${nameBtn(p)}${portalTag(p)}<small>${esc(sub ?? p.team)}</small></td>`;
@@ -601,7 +602,7 @@ function renderPlayers(onlyTable) {
   colKeys.forEach(k => cols.push({ k, h: M[k].l, t: M[k].n + (M[k].dir < 0 ? " (lower is better)" : "") }));
   const shown = rows.slice(0, st.limit);
   $("#pTable").innerHTML = thead(cols, st.sort, st.dir) + `<tbody>${shown.map((p, i) => `<tr>
-    <td class="rank">${i + 1}</td>${playerCell(p)}<td class="l conf">${esc(p.conf)}</td><td class="l"><span class="pos">${esc(p.pos)}</span></td>
+    <td class="rank">${i + 1}</td>${playerInline(p)}<td class="l conf">${esc(p.conf)}</td><td class="l"><span class="pos">${esc(p.pos)}</span></td>
     ${hasW ? scoreCell(p._s?.score) : ""}
     ${colKeys.map(k => `<td class="num">${fmt(k, p[k])}</td>`).join("")}
   </tr>`).join("") || `<tr><td class="l" colspan="${cols.length}" style="padding:24px;color:var(--muted)">No players match these filters.${st.portal && !portalIds.size ? " Load a portal list first." : ""}</td></tr>`}</tbody>`;
@@ -942,7 +943,6 @@ function initPortal() {
 
 /* ---------- RANKINGS view ---------- */
 const SMALL_SAMPLE = 300; // minutes; only used to label small samples, never to filter
-function tierOf(s) { return s >= 85 ? ["t1", "Priority target"] : s >= 70 ? ["t2", "Strong fit"] : s >= 55 ? ["t3", "Rotation"] : ["t4", "Depth"]; }
 const ordinal = n => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
 function renderRankings(onlyTable) {
   const r = S.r, pos = r.pos, w = r.weights[pos], min = r.min[pos];
@@ -980,20 +980,19 @@ function renderRankings(onlyTable) {
     const parts = [...p._r.parts].sort((a, b) => b.pc * Math.sqrt(b.wt) - a.pc * Math.sqrt(a.wt));
     const strong = parts.filter(x => x.pc >= 70).slice(0, 3);
     const weak = [...p._r.parts].sort((a, b) => a.pc - b.pc).filter(x => x.pc < 40).slice(0, 1);
-    const [tc, tl] = tierOf(p._r.score);
     const line = x => `${M[x.k].n}: <b>${M[x.k].f(p[x.k])}</b> (${ordinal(Math.round(x.pc))} pct)`;
-    return `<article class="rec"><div class="hd"><div><div class="nm">${nameBtn(p)}${portalTag(p)}</div><div class="tm">${esc(p.team)} &middot; ${esc(p.conf)} &middot; ${esc(p.pos)} &middot; ${fmt("MIN", pos === "GK" ? p.GKMIN : p.MIN)} min</div></div><div style="text-align:right"><div class="big">${p._r.score.toFixed(0)}</div><span class="tier ${tc}">${tl}</span></div></div>
+    return `<article class="rec"><div class="hd"><div><div class="nm">${nameBtn(p)}${portalTag(p)}</div><div class="tm">${esc(p.team)} &middot; ${esc(p.conf)} &middot; ${esc(p.pos)} &middot; ${fmt("MIN", pos === "GK" ? p.GKMIN : p.MIN)} min</div></div><div style="text-align:right"><div class="big">${p._r.score.toFixed(0)}</div><div class="note" style="font-size:11px">Score</div></div></div>
       <ul>${strong.map(x => `<li>${line(x)}</li>`).join("") || `<li>Solid across the board without a standout metric</li>`}${weak.map(x => `<li class="minus">Watch: ${line(x)}</li>`).join("")}${p._low ? `<li class="minus">Small sample: under ${SMALL_SAMPLE} minutes</li>` : ""}${p._r.coverage < 0.75 ? `<li class="minus">Missing data for ${Math.round((1 - p._r.coverage) * 100)}% of the weight</li>` : ""}</ul></article>`;
   }).join("") : `<p class="empty-w">${hasW ? "No players to recommend with these filters." : "Add weights to see recommendations."}</p>`;
   // table
   const wkeys = Object.keys(w).filter(k => w[k] > 0);
   const extra = pos === "GK" ? ["GKMIN", "GAA", "SVpct", "SHO"] : ["MIN", "G", "A", "PTS"];
   const colKeys = [...new Set([...extra, ...wkeys])];
-  const cols = [{ k: "rank", h: "Rank", nosort: true }, { k: "name", h: "Player", l: 1 }, { k: "pos", h: "Pos", l: 1, nosort: true }, { k: "score", h: "Score" }, { k: "tier", h: "Tier", l: 1, nosort: true }, { k: "str", h: "Why", l: 1, nosort: true }, ...colKeys.map(k => ({ k, h: M[k].l, t: M[k].n }))];
+  const cols = [{ k: "rank", h: "Rank", nosort: true }, { k: "name", h: "Player", l: 1 }, { k: "pos", h: "Pos", l: 1, nosort: true }, { k: "score", h: "Score" }, { k: "str", h: "Why", l: 1, nosort: true }, ...colKeys.map(k => ({ k, h: M[k].l, t: M[k].n }))];
   $("#rTable").innerHTML = thead(cols, r.sort, r.dir) + `<tbody>${top.map(p => {
-    const s = p._r.score; const [tc, tl] = s == null ? ["t4", "No data"] : tierOf(s);
+    const s = p._r.score;
     const best = [...p._r.parts].sort((a, b) => b.pc * Math.sqrt(b.wt) - a.pc * Math.sqrt(a.wt)).filter(x => x.pc >= 60).slice(0, 2);
-    return `<tr><td class="rank">${p._rank ?? "&ndash;"}</td>${playerCell(p, p.team + " · " + p.conf)}<td class="l"><span class="pos">${esc(p.pos)}</span></td>${scoreCell(s)}<td class="l"><span class="tier ${tc}">${tl}</span></td>
+    return `<tr><td class="rank">${p._rank ?? "&ndash;"}</td>${playerCell(p, p.team + " · " + p.conf)}<td class="l"><span class="pos">${esc(p.pos)}</span></td>${scoreCell(s, false)}
       <td class="strengths">${best.map(x => `<b>${M[x.k].l}</b> ${ordinal(Math.round(x.pc))} pct`).join(", ") || "&ndash;"}${p._low ? " &middot; small sample" : ""}</td>
       ${colKeys.map(k => heatCell(k, p[k], table)).join("")}</tr>`;
   }).join("") || `<tr><td class="l" colspan="${cols.length}" style="padding:24px;color:var(--muted)">No ${POSNAMES[pos].toLowerCase()} to show.</td></tr>`}</tbody>`;
